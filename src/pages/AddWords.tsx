@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { LANGUAGES, DEFAULT_LANGUAGE1, DEFAULT_LANGUAGE2, DEFAULT_SEPARATOR } from '../utils/languages';
+import { WordSet } from '../types';
+import { LANGUAGES, getLanguageByName } from '../utils/languages';
 
 interface AddWordsProps {
   onAddWords: (wordPairs: { text1: string; text2: string }[]) => void;
