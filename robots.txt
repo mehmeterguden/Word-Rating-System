@@ -1,0 +1,8 @@
+# Word Rating System - Robots.txt
+# https://github.com/mehmeterguden/word-rating-system
+
+User-agent: *
+Allow: /
+
+# Sitemap (if you have one)
+# Sitemap: https://github.com/mehmeterguden/word-rating-system/sitemap.xml

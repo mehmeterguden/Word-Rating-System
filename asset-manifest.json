@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/word-rating-system/static/css/main.4b5236b9.css",
+    "main.js": "/word-rating-system/static/js/main.6f8b3c1a.js",
+    "static/js/453.cbc856bd.chunk.js": "/word-rating-system/static/js/453.cbc856bd.chunk.js",
+    "index.html": "/word-rating-system/index.html",
+    "main.4b5236b9.css.map": "/word-rating-system/static/css/main.4b5236b9.css.map",
+    "main.6f8b3c1a.js.map": "/word-rating-system/static/js/main.6f8b3c1a.js.map",
+    "453.cbc856bd.chunk.js.map": "/word-rating-system/static/js/453.cbc856bd.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.4b5236b9.css",
+    "static/js/main.6f8b3c1a.js"
+  ]
+}
