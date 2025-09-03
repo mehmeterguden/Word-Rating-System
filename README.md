@@ -1,46 +1,202 @@
-# Getting Started with Create React App
+# Word Rating System
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A modern, interactive vocabulary learning platform that helps you track and evaluate your word knowledge with an intelligent rating system.
 
-## Available Scripts
+[![React](https://img.shields.io/badge/React-18.0.0-blue.svg)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.0-blue.svg)](https://tailwindcss.com/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-In the project directory, you can run:
+## 🌟 Features
 
-### `npm start`
+### 📚 **Word Sets Management**
+- Create multiple word sets for different topics or languages
+- Organize vocabulary by categories (e.g., "Business English", "Daily Conversations")
+- Edit set names and descriptions
+- Delete unused sets
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+### 🌍 **Bilingual Support**
+- Support for any language pair (default: English-Turkish)
+- Custom separator character for word input
+- Real-time preview of parsed words
+- Flexible language selection from 200+ languages
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+### 🎯 **Interactive Evaluation System**
+- Flashcard-style evaluation interface
+- 1-5 difficulty rating system
+- Keyboard shortcuts for quick rating (1-5 keys)
+- Navigation between words (arrow keys, space)
+- Progress tracking with visual indicators
 
-### `npm test`
+### 📊 **Smart Progress Tracking**
+- Visual difficulty indicators with color-coded badges
+- Filter words by evaluation status (All/Pending)
+- Export word sets to Excel (.xlsx) and plain text formats
+- Reset individual word evaluations
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### 🎨 **Modern UI/UX**
+- Responsive design with Tailwind CSS
+- Beautiful gradients and animations
+- Intuitive navigation
+- Mobile-friendly interface
 
-### `npm run build`
+## 🚀 Quick Start
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### Prerequisites
+- Node.js (v16 or higher)
+- npm or yarn
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### Installation
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/mehmeterguden/word-rating-system.git
+   cd word-rating-system
+   ```
 
-### `npm run eject`
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+3. **Start the development server**
+   ```bash
+   npm start
+   ```
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+4. **Open your browser**
+   Navigate to `http://localhost:3000`
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+## 📖 Usage Guide
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+### Creating Your First Word Set
+1. Click on "Sets" in the navigation
+2. Click "Create New Set"
+3. Enter a name and description
+4. Select your preferred languages and separator
 
-## Learn More
+### Adding Words
+1. Go to "Add Words" page
+2. Choose your word set
+3. Enter words in format: `First Language - Second Language`
+4. Use the preview to verify parsing
+5. Click "Add Words"
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+### Evaluating Words
+1. Navigate to "Evaluate" page
+2. Choose evaluation options
+3. Use keyboard shortcuts:
+   - **1-5**: Rate difficulty
+   - **Space/Click**: Reveal answer
+   - **Arrow Keys**: Navigate
+   - **ESC**: Close evaluation
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### Managing Words
+- **Home**: View all words with filtering options
+- **Reset**: Clear individual word evaluations
+- **Delete**: Remove words from your sets
+- **Export**: Download word sets as Excel or text files
+
+## 🛠️ Technology Stack
+
+- **Frontend**: React 18 with TypeScript
+- **Styling**: Tailwind CSS
+- **State Management**: React Hooks
+- **Data Storage**: Local Storage
+- **Export**: XLSX.js for Excel files
+- **Build Tool**: Create React App
+
+## 📁 Project Structure
+
+```
+src/
+├── components/          # Reusable UI components
+│   ├── EvaluationModal.tsx
+│   ├── Header.tsx
+│   ├── Navigation.tsx
+│   ├── WordCard.tsx
+│   └── WordsList.tsx
+├── hooks/              # Custom React hooks
+│   ├── useEvaluation.ts
+│   ├── useWords.ts
+│   └── useWordSets.ts
+├── pages/              # Page components
+│   ├── AddWords.tsx
+│   ├── EvaluationOptions.tsx
+│   ├── Home.tsx
+│   └── WordSetManager.tsx
+├── types/              # TypeScript type definitions
+│   └── index.ts
+└── utils/              # Utility functions
+    ├── difficultyUtils.ts
+    └── languages.ts
+```
+
+## 🎯 Key Features Explained
+
+### Word Sets System
+The application uses a sophisticated word sets system that allows users to organize vocabulary by different categories, topics, or languages. Each set maintains its own language settings and word collection.
+
+### Bilingual Word Structure
+Words are stored with two text fields (`text1` and `text2`) representing the first and second languages. This enables flexible language pair support beyond just English-Turkish.
+
+### Evaluation Algorithm
+The system uses a 1-5 difficulty rating where:
+- **1**: Very Easy
+- **2**: Easy  
+- **3**: Medium
+- **4**: Hard
+- **5**: Very Hard
+
+### Data Persistence
+All data is stored locally using browser's localStorage, ensuring privacy and offline functionality.
+
+## 🔧 Development
+
+### Available Scripts
+
+```bash
+# Start development server
+npm start
+
+# Build for production
+npm run build
+
+# Run tests
+npm test
+
+# Eject from Create React App
+npm run eject
+```
+
+### Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📞 Contact
+
+- **GitHub**: [@mehmeterguden](https://github.com/mehmeterguden)
+- **Project Link**: [https://github.com/mehmeterguden/word-rating-system](https://github.com/mehmeterguden/word-rating-system)
+
+## 🙏 Acknowledgments
+
+- React team for the amazing framework
+- Tailwind CSS for the utility-first CSS framework
+- XLSX.js for Excel export functionality
+- All contributors and users of this project
+
+---
+
+⭐ **Star this repository if you find it helpful!**
