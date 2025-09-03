@@ -1,6 +1,7 @@
 {
   "name": "word-rating-system",
   "version": "1.0.0",
+  "homepage": "https://mehmeterguden.github.io/word-rating-system",
   "description": "A modern, interactive vocabulary learning platform that helps you track and evaluate your word knowledge with an intelligent rating system.",
   "keywords": [
     "vocabulary",
@@ -46,7 +47,9 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build"
   },
   "eslintConfig": {
     "extends": [
@@ -66,7 +69,9 @@
       "last 1 safari version"
     ]
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "gh-pages": "^6.1.0"
+  },
   "engines": {
     "node": ">=16.0.0",
     "npm": ">=8.0.0"
