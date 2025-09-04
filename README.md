@@ -59,12 +59,21 @@ A modern, interactive vocabulary learning platform that helps you track and eval
    npm install
    ```
 
-3. **Start the development server**
+3. **Set up environment variables**
+   ```bash
+   # Copy the example environment file
+   cp .env.example .env
+   
+   # Edit .env file and add your Google Gemini API key
+   # Get your API key from: https://makersuite.google.com/app/apikey
+   ```
+
+4. **Start the development server**
    ```bash
    npm start
    ```
 
-4. **Open your browser**
+5. **Open your browser**
    Navigate to `http://localhost:3000`
 
 ## 📖 Usage Guide
