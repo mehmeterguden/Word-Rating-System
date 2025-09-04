@@ -116,6 +116,21 @@ const Navigation: React.FC<NavigationProps> = ({
                 )}
               </div>
             </button>
+            <button
+              onClick={() => setCurrentPage('settings')}
+              className={`px-6 py-4 text-sm font-medium transition-all duration-200 rounded-xl ${
+                currentPage === 'settings'
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg transform scale-105'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 hover:shadow-md'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.89 3.31.877 2.42 2.42a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.89 1.543-.877 3.31-2.42 2.42a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.89-3.31-.877-2.42-2.42a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35.497-.12.902-.426 1.065-2.573-.89-1.543.877-3.31 2.42-2.42.622.358 1.4.153 2.573-1.066z"/>
+                </svg>
+                <span>Settings</span>
+              </div>
+            </button>
           </div>
 
           {/* Right side - Set Selector */}

@@ -1,4 +1,4 @@
-export type Page = 'home' | 'add' | 'evaluate' | 'sets' | 'debug';
+export type Page = 'home' | 'add' | 'evaluate' | 'sets' | 'settings' | 'debug';
 
 export type DifficultyLevel = 0 | 1 | 2 | 3 | 4 | 5;
 

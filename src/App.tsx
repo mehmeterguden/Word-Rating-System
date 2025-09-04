@@ -6,6 +6,7 @@ import AddWords from './pages/AddWords';
 import EvaluationOptions from './pages/EvaluationOptions';
 import WordSetManager from './pages/WordSetManager';
 import DebugPage from './pages/DebugPage';
+import Settings from './pages/Settings';
 import EvaluationModal from './components/EvaluationModal';
 import { useWords } from './hooks/useWords';
 import { useEvaluation } from './hooks/useEvaluation';
@@ -178,6 +179,9 @@ function App() {
         )}
         
         {currentPage === 'debug' && <DebugPage />}
+        {currentPage === 'settings' && (
+          <Settings />
+        )}
       </main>
 
       {/* Evaluation Modal */}
