@@ -911,7 +911,16 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
                         <input
                           value={chatInput}
                           onChange={(e) => setChatInput(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSendChat(); } }}
+                          onKeyDown={(e) => { 
+                            if (e.key === 'Enter') { 
+                              e.preventDefault(); 
+                              handleSendChat(); 
+                            }
+                            // Prevent 1,2,3,4 keys from triggering rating in chat
+                            if (['1', '2', '3', '4', '5'].includes(e.key)) {
+                              e.stopPropagation();
+                            }
+                          }}
                           placeholder="Mesaj yaz..."
                           className="flex-1 px-4 py-3 rounded-xl border border-slate-200 bg-white/90 shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-100"
                         />

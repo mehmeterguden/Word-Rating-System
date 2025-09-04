@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { LANGUAGES } from '../utils/languages';
 import { Page } from '../types';
 
@@ -27,6 +27,10 @@ const Settings: React.FC<SettingsProps> = ({ setCurrentPage, setDeveloperMode })
     }
   });
 
+  const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
+  const [languageSearchQuery, setLanguageSearchQuery] = useState('');
+  const languageDropdownRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     try { localStorage.setItem(AI_LANG_KEY, aiLanguage); } catch {}
   }, [aiLanguage]);
@@ -37,6 +41,30 @@ const Settings: React.FC<SettingsProps> = ({ setCurrentPage, setDeveloperMode })
       setDeveloperMode(developerMode);
     } catch {}
   }, [developerMode, setDeveloperMode]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (languageDropdownRef.current && !languageDropdownRef.current.contains(event.target as Node)) {
+        setIsLanguageDropdownOpen(false);
+        setLanguageSearchQuery('');
+      }
+    };
+
+    if (isLanguageDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isLanguageDropdownOpen]);
+
+  // Filter languages based on search query
+  const filteredLanguages = LANGUAGES.filter(lang =>
+    lang.name.toLowerCase().includes(languageSearchQuery.toLowerCase()) ||
+    lang.nativeName.toLowerCase().includes(languageSearchQuery.toLowerCase())
+  );
 
   return (
     <div className="max-w-3xl mx-auto px-6">
@@ -61,17 +89,72 @@ const Settings: React.FC<SettingsProps> = ({ setCurrentPage, setDeveloperMode })
               <span className="px-2 py-1 rounded-lg bg-slate-100 text-slate-600 text-xs">Current: {aiLanguage}</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="relative">
-                <select
-                  value={aiLanguage}
-                  onChange={(e) => setAiLanguage(e.target.value)}
-                  className="w-full appearance-none px-4 py-3 rounded-xl border border-slate-200 bg-white/90 shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-100 text-slate-800"
+              <div className="relative" ref={languageDropdownRef}>
+                <button
+                  onClick={() => setIsLanguageDropdownOpen(!isLanguageDropdownOpen)}
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-slate-200 bg-white/90 shadow-sm hover:border-slate-300 focus:outline-none focus:ring-4 focus:ring-blue-100 text-slate-800 transition-colors"
                 >
-                  {LANGUAGES.map(l => (
-                    <option key={l.code} value={l.name}>{l.name}</option>
-                  ))}
-                </select>
-                <svg className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/></svg>
+                  <span>{aiLanguage}</span>
+                  <svg className={`w-4 h-4 text-slate-400 transition-transform ${isLanguageDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
+                  </svg>
+                </button>
+                
+                {isLanguageDropdownOpen && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-60 overflow-hidden">
+                    {/* Search Input */}
+                    <div className="p-3 border-b border-slate-100">
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="Search languages..."
+                          value={languageSearchQuery}
+                          onChange={(e) => setLanguageSearchQuery(e.target.value)}
+                          className="w-full px-3 py-2 pl-9 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          autoFocus
+                        />
+                        <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                      </div>
+                    </div>
+                    
+                    {/* Language Options */}
+                    <div className="max-h-48 overflow-y-auto">
+                      {filteredLanguages.length > 0 ? (
+                        filteredLanguages.map(lang => (
+                          <button
+                            key={lang.code}
+                            onClick={() => {
+                              setAiLanguage(lang.name);
+                              setIsLanguageDropdownOpen(false);
+                              setLanguageSearchQuery('');
+                            }}
+                            className={`w-full px-4 py-2 text-left text-sm hover:bg-slate-50 transition-colors ${
+                              aiLanguage === lang.name ? 'bg-blue-50 text-blue-700' : 'text-slate-700'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span>{lang.name}</span>
+                              {aiLanguage === lang.name && (
+                                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
+                                </svg>
+                              )}
+                            </div>
+                            {lang.nativeName !== lang.name && (
+                              <div className="text-xs text-slate-500 mt-1">{lang.nativeName}</div>
+                            )}
+                          </button>
+                        ))
+                      ) : (
+                        <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                          No languages found
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="flex items-center">
                 <p className="text-xs text-slate-500">Default is English. You can change it anytime.</p>

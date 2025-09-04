@@ -268,6 +268,8 @@ const AddWords: React.FC<AddWordsProps> = ({
                            placeholder="Search languages..."
                            value={searchLang1}
                            onChange={(e) => setSearchLang1(e.target.value)}
+                           onClick={(e) => e.stopPropagation()}
+                           onMouseDown={(e) => e.stopPropagation()}
                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                            autoFocus
                          />
@@ -323,6 +325,8 @@ const AddWords: React.FC<AddWordsProps> = ({
                            placeholder="Search languages..."
                            value={searchLang2}
                            onChange={(e) => setSearchLang2(e.target.value)}
+                           onClick={(e) => e.stopPropagation()}
+                           onMouseDown={(e) => e.stopPropagation()}
                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                            autoFocus
                          />
