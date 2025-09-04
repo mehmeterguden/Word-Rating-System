@@ -9,7 +9,7 @@ interface HomeProps {
   onResetEvaluation: () => void;
 }
 
-type FilterType = 'all' | 'pending';
+type FilterType = 'all' | 'pending' | 'evaluated';
 type SortOption = 'az' | 'za' | 'difficultyAsc' | 'difficultyDesc';
 
 const Home: React.FC<HomeProps> = ({
@@ -25,6 +25,8 @@ const Home: React.FC<HomeProps> = ({
   const [isSortOpen, setIsSortOpen] = useState<boolean>(false);
   const [evaluatedFirst, setEvaluatedFirst] = useState<boolean>(false);
   const sortRef = useRef<HTMLDivElement | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10; // Default to 10 items per page
 
   const sortLabel = useMemo(() => {
     switch (sortBy) {
@@ -62,7 +64,9 @@ const Home: React.FC<HomeProps> = ({
   const filteredWords = useMemo(() => {
     let list = filter === 'all' 
       ? words 
-      : words.filter(word => !word.isEvaluated);
+      : filter === 'pending'
+      ? words.filter(word => !word.isEvaluated)
+      : words.filter(word => word.isEvaluated);
 
     // Search filter
     if (searchQuery.trim() !== '') {
@@ -101,6 +105,18 @@ const Home: React.FC<HomeProps> = ({
     return list;
   }, [words, filter, searchQuery, levelFilters, sortBy, evaluatedFirst]);
 
+  // Reset page when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, searchQuery, levelFilters]);
+
+  const paginatedWords = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredWords.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredWords, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredWords.length / itemsPerPage);
+
   // Close sort on outside click / Esc
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -121,6 +137,7 @@ const Home: React.FC<HomeProps> = ({
   }, [isSortOpen]);
 
   const pendingCount = words.filter(word => !word.isEvaluated).length;
+  const evaluatedCount = words.filter(word => word.isEvaluated).length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -132,7 +149,7 @@ const Home: React.FC<HomeProps> = ({
               <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Your Words</h2>
               
               <div className="flex items-center flex-wrap gap-4">
-                {/* All/Pending toggle */}
+                {/* All/Pending/Evaluated toggle */}
                 <div className="flex bg-slate-100/70 rounded-full p-1 ring-1 ring-slate-200 shadow-sm">
                   <button
                     onClick={() => setFilter('all')}
@@ -153,6 +170,16 @@ const Home: React.FC<HomeProps> = ({
                     }`}
                   >
                     Pending ({pendingCount})
+                  </button>
+                  <button
+                    onClick={() => setFilter('evaluated')}
+                    className={`px-5 py-2 rounded-full font-medium transition-all duration-200 ${
+                      filter === 'evaluated'
+                        ? 'bg-white text-green-700 shadow ring-1 ring-green-200'
+                        : 'text-slate-600 hover:text-slate-800'
+                    }`}
+                  >
+                    Evaluated ({evaluatedCount})
                   </button>
                 </div>
 
@@ -305,21 +332,69 @@ const Home: React.FC<HomeProps> = ({
           </div>
         ) : (
           <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl border border-white/20 overflow-hidden relative z-10">
-            <div className="p-8">
-              <div className="space-y-6">
-                {filteredWords.map((word) => (
-                  <WordCard
-                    key={word.id}
-                    word={word}
-                    onUpdateDifficulty={onUpdateDifficulty}
-                    onRemoveWord={onRemoveWord}
-                    onResetEvaluation={(id) => onUpdateDifficulty(id, 0)}
-                    fallbackLearningLanguageName={word.language1Name}
-                    fallbackKnownLanguageName={word.language2Name}
-                  />
-                ))}
+                          <div className="p-8">
+                <div className="space-y-6">
+                  {paginatedWords.map((word) => (
+                    <WordCard
+                      key={word.id}
+                      word={word}
+                      onUpdateDifficulty={onUpdateDifficulty}
+                      onRemoveWord={onRemoveWord}
+                      onResetEvaluation={(id) => onUpdateDifficulty(id, 0)}
+                      fallbackLearningLanguageName={word.language1Name}
+                      fallbackKnownLanguageName={word.language2Name}
+                    />
+                  ))}
+                </div>
+                
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="border-t border-slate-200 px-8 py-4">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-slate-600">
+                        Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredWords.length)} of {filteredWords.length} words
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                          disabled={currentPage === 1}
+                          className="px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 text-slate-600"
+                        >
+                          Previous
+                        </button>
+                        <div className="flex items-center gap-1">
+                          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                            const page = i + 1;
+                            return (
+                              <button
+                                key={page}
+                                onClick={() => setCurrentPage(page)}
+                                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                  currentPage === page
+                                    ? 'bg-blue-600 text-white'
+                                    : 'hover:bg-slate-100 text-slate-600'
+                                }`}
+                              >
+                                {page}
+                              </button>
+                            );
+                          })}
+                          {totalPages > 5 && (
+                            <span className="px-2 text-slate-400">...</span>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                          disabled={currentPage === totalPages}
+                          className="px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100 text-slate-600"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
           </div>
         )}
       </div>

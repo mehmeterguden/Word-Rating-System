@@ -16,6 +16,9 @@ interface GenerateParams {
 export interface AiResult {
   definition?: string;
   partOfSpeech?: string;
+  pronunciation?: string;
+  alternativePronunciation?: string;
+  cefrLevel?: string; // Added CEFR level
   examples?: Array<{ sentence: string; translation?: string }>;
   synonyms?: Array<{ word: string; isExact: boolean }>;
   antonyms?: Array<{ word: string; isExact: boolean }>;
@@ -30,6 +33,9 @@ Return ONLY valid JSON with this structure:
 {
   "definition": string,              // concise, in ${explanationLanguageName}
   "partOfSpeech": string,           // e.g., noun/verb/adjective
+  "pronunciation": string,          // IPA pronunciation, e.g., /ˈkɒn.tɪn.u.eɪ.tʃər/
+  "alternativePronunciation": string, // Alternative pronunciation, e.g., "duh · mand"
+  "cefrLevel": string,             // CEFR level, e.g., "A1", "B2", "C1"
   "examples": [                     // 3-5 examples
     { "sentence": string, "translation": string } // IMPORTANT: wrap every occurrence of the target word in the sentence with [[w]] and [[/w]] markers.
   ],
@@ -46,12 +52,15 @@ Return ONLY valid JSON with this structure:
   const task =
     mode === 'full'
       ? `Teach the user the word "${word}" as if it's their first time. Provide a complete learning card including:
-         - A clear, beginner-friendly definition in ${explanationLanguageName} (1-3 sentences). Include the core meaning and a tiny nuance/pitfall if important.
-         - Part of speech
-         - 3-5 graded example sentences (from easy to harder) in ${examplesLanguageName} with ${explanationLanguageName} translations where needed. In each example sentence, wrap every occurrence of "${word}" with [[w]] and [[/w]] markers.
+         - A clear, beginner-friendly definition in ${explanationLanguageName} (1-3 sentences). Include the core meaning and a tiny nuance/pitfall if important. Use **bold** for important terms or related words.
+         - Part of speech in both ${explanationLanguageName} and ${examplesLanguageName} (e.g., "Noun (İsim)" or "Verb (Fiil)")
+         - Realistic CEFR level (A1 for basic words like "hello", "cat"; A2 for common words like "house", "work"; B1 for intermediate words like "achieve", "consider"; B2 for advanced words like "accomplish", "endeavor"; C1 for complex words like "arbitrary", "elaborate"; C2 for very advanced words like "ubiquitous", "ephemeral")
+         - Pronunciation in IPA (International Phonetic Alphabet) if the word is in English or another language where IPA is commonly used
+         - Alternative pronunciation in a more readable format (e.g., "duh · mand" for "demand")
+         - 3-5 graded example sentences (from easy to harder) in ${examplesLanguageName} with ${explanationLanguageName} translations where needed. In each example sentence, wrap every occurrence of "${word}" with [[w]] and [[/w]] markers for highlighting.
          - 5-10 synonyms in ${examplesLanguageName} (mark exact synonyms vs similar meanings)
          - 5-10 antonyms in ${examplesLanguageName} (mark exact antonyms vs opposite meanings)
-         - 3-5 short, practical learning tips
+         - 3-5 short, practical learning tips. Use **bold** for important terms or key concepts.
          Keep explanations in ${explanationLanguageName}. Focus on clarity and learning.`
       : mode === 'explain'
       ? `Explain the word "${word}" clearly and pedagogically in ${explanationLanguageName}.

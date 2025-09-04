@@ -15,6 +15,13 @@ import { Page, Word } from './types';
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('home');
+  const [developerMode, setDeveloperMode] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('word-rating-system-developer-mode') === 'true';
+    } catch {
+      return false;
+    }
+  });
   
   // Word sets management
   const { 
@@ -81,6 +88,18 @@ function App() {
     }
   }, [setsLoaded, wordsLoaded]);
 
+  // Listen for developer mode changes
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'word-rating-system-developer-mode') {
+        setDeveloperMode(e.newValue === 'true');
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   // Update word count when words change
   useEffect(() => {
     if (activeSetId && wordsLoaded) {
@@ -133,6 +152,7 @@ function App() {
         wordSets={wordSets}
         activeSetId={activeSetId}
         onSetActive={setActiveSet}
+        developerMode={developerMode}
       />
       
       <main className="py-8">
@@ -180,7 +200,7 @@ function App() {
         
         {currentPage === 'debug' && <DebugPage />}
         {currentPage === 'settings' && (
-          <Settings />
+          <Settings setCurrentPage={setCurrentPage} setDeveloperMode={setDeveloperMode} />
         )}
       </main>
 
