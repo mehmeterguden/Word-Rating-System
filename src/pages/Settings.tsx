@@ -45,7 +45,12 @@ const Settings: React.FC<SettingsProps> = ({ setCurrentPage, setDeveloperMode })
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (languageDropdownRef.current && !languageDropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Element;
+      if (languageDropdownRef.current && !languageDropdownRef.current.contains(target)) {
+        // Don't close if clicking on search input or its container
+        if (target.closest('.search-input-container')) {
+          return;
+        }
         setIsLanguageDropdownOpen(false);
         setLanguageSearchQuery('');
       }
@@ -103,13 +108,16 @@ const Settings: React.FC<SettingsProps> = ({ setCurrentPage, setDeveloperMode })
                 {isLanguageDropdownOpen && (
                   <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-60 overflow-hidden">
                     {/* Search Input */}
-                    <div className="p-3 border-b border-slate-100">
+                    <div className="p-3 border-b border-slate-100 search-input-container">
                       <div className="relative">
                         <input
                           type="text"
                           placeholder="Search languages..."
                           value={languageSearchQuery}
                           onChange={(e) => setLanguageSearchQuery(e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
                           className="w-full px-3 py-2 pl-9 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           autoFocus
                         />

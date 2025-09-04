@@ -39,6 +39,10 @@ const AddWords: React.FC<AddWordsProps> = ({
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Element;
       if (!target.closest('.language-dropdown')) {
+        // Don't close if clicking on search input or its container
+        if (target.closest('.search-input-container')) {
+          return;
+        }
         setShowLang1Dropdown(false);
         setShowLang2Dropdown(false);
       }
@@ -262,7 +266,7 @@ const AddWords: React.FC<AddWordsProps> = ({
                   
                                      {showLang1Dropdown && (
                      <div className="absolute top-full left-0 right-0 mt-2 bg-white border-2 border-gray-300 rounded-2xl shadow-xl z-50 max-h-96 overflow-hidden">
-                       <div className="p-4 border-b border-gray-200">
+                       <div className="p-4 border-b border-gray-200 search-input-container">
                          <input
                            type="text"
                            placeholder="Search languages..."
@@ -270,6 +274,7 @@ const AddWords: React.FC<AddWordsProps> = ({
                            onChange={(e) => setSearchLang1(e.target.value)}
                            onClick={(e) => e.stopPropagation()}
                            onMouseDown={(e) => e.stopPropagation()}
+                           onKeyDown={(e) => e.stopPropagation()}
                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                            autoFocus
                          />
@@ -319,7 +324,7 @@ const AddWords: React.FC<AddWordsProps> = ({
                   
                                      {showLang2Dropdown && (
                      <div className="absolute top-full left-0 right-0 mt-2 bg-white border-2 border-gray-300 rounded-2xl shadow-xl z-50 max-h-96 overflow-hidden">
-                       <div className="p-4 border-b border-gray-200">
+                       <div className="p-4 border-b border-gray-200 search-input-container">
                          <input
                            type="text"
                            placeholder="Search languages..."
@@ -327,6 +332,7 @@ const AddWords: React.FC<AddWordsProps> = ({
                            onChange={(e) => setSearchLang2(e.target.value)}
                            onClick={(e) => e.stopPropagation()}
                            onMouseDown={(e) => e.stopPropagation()}
+                           onKeyDown={(e) => e.stopPropagation()}
                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                            autoFocus
                          />
