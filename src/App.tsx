@@ -12,6 +12,8 @@ import { useWords } from './hooks/useWords';
 import { useEvaluation } from './hooks/useEvaluation';
 import { useWordSets } from './hooks/useWordSets';
 import { Page, Word } from './types';
+import { registerModelSwitchCallback } from './utils/ai';
+import ModelSwitchToast from './components/ModelSwitchToast';
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('home');
@@ -21,6 +23,14 @@ function App() {
     } catch {
       return false;
     }
+  });
+  
+  // Model switch notification state
+  const [modelSwitchToast, setModelSwitchToast] = useState({
+    isVisible: false,
+    fromModel: '',
+    toModel: '',
+    reason: ''
   });
   
   // Word sets management
@@ -87,6 +97,18 @@ function App() {
       console.log('🏠 App: wordsLoaded:', wordsLoaded);
     }
   }, [setsLoaded, wordsLoaded]);
+
+  // Register model switch callback
+  useEffect(() => {
+    registerModelSwitchCallback((fromModel, toModel, reason) => {
+      setModelSwitchToast({
+        isVisible: true,
+        fromModel,
+        toModel,
+        reason
+      });
+    });
+  }, []);
 
   // Listen for developer mode changes
   useEffect(() => {
@@ -202,6 +224,7 @@ function App() {
         {currentPage === 'settings' && (
           <Settings setCurrentPage={setCurrentPage} setDeveloperMode={setDeveloperMode} />
         )}
+
       </main>
 
       {/* Evaluation Modal */}
@@ -226,6 +249,15 @@ function App() {
           onNext={nextEvaluation}
         />
       )}
+      
+      {/* Model Switch Toast */}
+      <ModelSwitchToast
+        isVisible={modelSwitchToast.isVisible}
+        fromModel={modelSwitchToast.fromModel}
+        toModel={modelSwitchToast.toModel}
+        reason={modelSwitchToast.reason}
+        onClose={() => setModelSwitchToast(prev => ({ ...prev, isVisible: false }))}
+      />
     </div>
   );
 }

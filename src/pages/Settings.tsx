@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { LANGUAGES } from '../utils/languages';
+import { LANGUAGES, getUniqueLanguages } from '../utils/languages';
 import { Page } from '../types';
 
 interface SettingsProps {
@@ -27,9 +27,14 @@ const Settings: React.FC<SettingsProps> = ({ setCurrentPage, setDeveloperMode })
     }
   });
 
-  const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
-  const [languageSearchQuery, setLanguageSearchQuery] = useState('');
+  // Dropdown states
+  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
+  const [searchLanguage, setSearchLanguage] = useState('');
+  const [selectedLanguageIndex, setSelectedLanguageIndex] = useState(-1);
+
+  // Refs for dropdown
   const languageDropdownRef = useRef<HTMLDivElement>(null);
+  const languageSearchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     try { localStorage.setItem(AI_LANG_KEY, aiLanguage); } catch {}
@@ -42,34 +47,119 @@ const Settings: React.FC<SettingsProps> = ({ setCurrentPage, setDeveloperMode })
     } catch {}
   }, [developerMode, setDeveloperMode]);
 
-  // Close dropdown when clicking outside
+  // Handle click outside to close dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Element;
-      if (languageDropdownRef.current && !languageDropdownRef.current.contains(target)) {
-        // Don't close if clicking on search input or its container
-        if (target.closest('.search-input-container')) {
-          return;
-        }
-        setIsLanguageDropdownOpen(false);
-        setLanguageSearchQuery('');
+      if (!target.closest('.language-dropdown')) {
+        setShowLanguageDropdown(false);
+        setSearchLanguage('');
+        setSelectedLanguageIndex(-1);
       }
     };
 
-    if (isLanguageDropdownOpen) {
+    if (showLanguageDropdown) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isLanguageDropdownOpen]);
+  }, [showLanguageDropdown]);
 
-  // Filter languages based on search query
-  const filteredLanguages = LANGUAGES.filter(lang =>
-    lang.name.toLowerCase().includes(languageSearchQuery.toLowerCase()) ||
-    lang.nativeName.toLowerCase().includes(languageSearchQuery.toLowerCase())
-  );
+  // Handle keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (showLanguageDropdown) {
+        handleLanguageKeyDown(event);
+      }
+    };
+
+    if (showLanguageDropdown) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showLanguageDropdown, searchLanguage]);
+
+  const handleLanguageKeyDown = (event: KeyboardEvent) => {
+    const filteredLanguages = getFilteredLanguages(searchLanguage);
+    
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        setSelectedLanguageIndex(prev => 
+          prev < filteredLanguages.length - 1 ? prev + 1 : 0
+        );
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        setSelectedLanguageIndex(prev => 
+          prev > 0 ? prev - 1 : filteredLanguages.length - 1
+        );
+        break;
+      case 'Enter':
+        event.preventDefault();
+        if (selectedLanguageIndex >= 0 && selectedLanguageIndex < filteredLanguages.length) {
+          const selectedLang = filteredLanguages[selectedLanguageIndex];
+          setAiLanguage(selectedLang.name);
+          setShowLanguageDropdown(false);
+          setSearchLanguage('');
+          setSelectedLanguageIndex(-1);
+        }
+        break;
+      case 'Escape':
+        setShowLanguageDropdown(false);
+        setSearchLanguage('');
+        setSelectedLanguageIndex(-1);
+        break;
+    }
+  };
+
+  const getFilteredLanguages = (searchTerm: string) => {
+    if (!searchTerm.trim()) {
+      return getUniqueLanguages(); // Show all unique languages when no search term
+    }
+    const searchLower = searchTerm.toLowerCase();
+    return getUniqueLanguages().filter(lang => 
+      lang.name.toLowerCase().includes(searchLower) ||
+      lang.nativeName.toLowerCase().includes(searchLower) ||
+      lang.code.toLowerCase().includes(searchLower)
+    );
+  };
+
+  const getLanguageDisplay = (langName: string) => {
+    const lang = getUniqueLanguages().find(l => l.name === langName);
+    return lang ? `${lang.name} (${lang.nativeName})` : langName;
+  };
+
+  const getLanguageFlag = (langName: string) => {
+    const lang = getUniqueLanguages().find(l => l.name === langName);
+    return lang ? lang.flag : '🌐';
+  };
+
+  const handleLanguageDropdownToggle = () => {
+    if (showLanguageDropdown) {
+      setShowLanguageDropdown(false);
+      setSearchLanguage('');
+      setSelectedLanguageIndex(-1);
+    } else {
+      setShowLanguageDropdown(true);
+      // Focus the search input after a short delay
+      setTimeout(() => {
+        languageSearchRef.current?.focus();
+      }, 100);
+    }
+  };
+
+  const handleLanguageSelect = (lang: any) => {
+    setAiLanguage(lang.name);
+    setShowLanguageDropdown(false);
+    setSearchLanguage('');
+    setSelectedLanguageIndex(-1);
+  };
 
   return (
     <div className="max-w-3xl mx-auto px-6">
@@ -94,70 +184,56 @@ const Settings: React.FC<SettingsProps> = ({ setCurrentPage, setDeveloperMode })
               <span className="px-2 py-1 rounded-lg bg-slate-100 text-slate-600 text-xs">Current: {aiLanguage}</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="relative" ref={languageDropdownRef}>
+              <div className="relative language-dropdown" ref={languageDropdownRef}>
                 <button
-                  onClick={() => setIsLanguageDropdownOpen(!isLanguageDropdownOpen)}
-                  className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-slate-200 bg-white/90 shadow-sm hover:border-slate-300 focus:outline-none focus:ring-4 focus:ring-blue-100 text-slate-800 transition-colors"
+                  onClick={handleLanguageDropdownToggle}
+                  className="w-full px-4 py-3 bg-white/90 border border-slate-200 rounded-xl shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-100 text-slate-800 text-left flex items-center justify-between"
                 >
-                  <span>{aiLanguage}</span>
-                  <svg className={`w-4 h-4 text-slate-400 transition-transform ${isLanguageDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="flex items-center space-x-3">
+                    <span className="text-xl">{getLanguageFlag(aiLanguage)}</span>
+                    <span className="font-medium">{getLanguageDisplay(aiLanguage)}</span>
+                  </div>
+                  <svg className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${showLanguageDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
                   </svg>
                 </button>
                 
-                {isLanguageDropdownOpen && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-60 overflow-hidden">
-                    {/* Search Input */}
-                    <div className="p-3 border-b border-slate-100 search-input-container">
-                      <div className="relative">
-                        <input
-                          type="text"
-                          placeholder="Search languages..."
-                          value={languageSearchQuery}
-                          onChange={(e) => setLanguageSearchQuery(e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onKeyDown={(e) => e.stopPropagation()}
-                          className="w-full px-3 py-2 pl-9 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          autoFocus
-                        />
-                        <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                        </svg>
-                      </div>
+                {showLanguageDropdown && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white border-2 border-slate-200 rounded-xl shadow-xl z-50 max-h-96 overflow-hidden">
+                    <div className="p-4 border-b border-slate-200">
+                      <input
+                        ref={languageSearchRef}
+                        type="text"
+                        placeholder="Search languages..."
+                        value={searchLanguage}
+                        onChange={(e) => {
+                          setSearchLanguage(e.target.value);
+                          setSelectedLanguageIndex(-1);
+                        }}
+                        className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
                     </div>
-                    
-                    {/* Language Options */}
-                    <div className="max-h-48 overflow-y-auto">
-                      {filteredLanguages.length > 0 ? (
-                        filteredLanguages.map(lang => (
-                          <button
-                            key={lang.code}
-                            onClick={() => {
-                              setAiLanguage(lang.name);
-                              setIsLanguageDropdownOpen(false);
-                              setLanguageSearchQuery('');
-                            }}
-                            className={`w-full px-4 py-2 text-left text-sm hover:bg-slate-50 transition-colors ${
-                              aiLanguage === lang.name ? 'bg-blue-50 text-blue-700' : 'text-slate-700'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <span>{lang.name}</span>
-                              {aiLanguage === lang.name && (
-                                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
-                                </svg>
-                              )}
-                            </div>
-                            {lang.nativeName !== lang.name && (
-                              <div className="text-xs text-slate-500 mt-1">{lang.nativeName}</div>
-                            )}
-                          </button>
-                        ))
-                      ) : (
-                        <div className="px-4 py-3 text-sm text-slate-500 text-center">
-                          No languages found
+                    <div className="max-h-80 overflow-y-auto">
+                      {getFilteredLanguages(searchLanguage).map((lang, index) => (
+                        <button
+                          key={lang.code}
+                          onClick={() => handleLanguageSelect(lang)}
+                          className={`w-full px-6 py-4 text-left transition-colors duration-200 flex items-center space-x-3 ${
+                            index === selectedLanguageIndex 
+                              ? 'bg-blue-100 border-l-4 border-blue-500' 
+                              : 'hover:bg-blue-50'
+                          }`}
+                        >
+                          <span className="text-xl">{getLanguageFlag(lang.name)}</span>
+                          <div>
+                            <div className="font-medium text-slate-800">{lang.name}</div>
+                            <div className="text-sm text-slate-500">{lang.nativeName}</div>
+                          </div>
+                        </button>
+                      ))}
+                      {getFilteredLanguages(searchLanguage).length === 0 && (
+                        <div className="px-6 py-4 text-slate-500 text-center">
+                          No languages found matching "{searchLanguage}"
                         </div>
                       )}
                     </div>

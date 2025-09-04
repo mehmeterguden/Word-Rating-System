@@ -26,6 +26,26 @@ export interface WordSet {
   wordCount: number;
 }
 
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  text: string;
+  wordId?: number; // To track which word this message belongs to
+}
+
+export interface AiResult {
+  definition?: string;
+  partOfSpeech?: string;
+  pronunciation?: string;
+  alternativePronunciation?: string;
+  cefrLevel?: string;
+  examples?: Array<{ sentence: string; translation?: string }>;
+  synonyms?: Array<{ word: string; isExact: boolean }>;
+  antonyms?: Array<{ word: string; isExact: boolean }>;
+  tips?: string[];
+  wordId?: number; // To track which word this result belongs to
+}
+
 export interface Language {
   code: string;
   name: string;

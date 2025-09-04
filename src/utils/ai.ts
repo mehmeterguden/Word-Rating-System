@@ -23,9 +23,57 @@ export interface AiResult {
   synonyms?: Array<{ word: string; isExact: boolean }>;
   antonyms?: Array<{ word: string; isExact: boolean }>;
   tips?: string[];
+  wordId?: number; // To track which word this result belongs to
 }
 
-const MODEL = 'gemini-2.5-flash';
+const MODELS = [
+  'gemini-2.5-flash-lite', 
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+  'gemini-2.0-flash-lite', 
+  'gemini-2.5-pro', 
+];
+
+// Keep track of which models have been tried
+let triedModels = new Set<string>();
+let currentModel = MODELS[0]; // Track current model
+let modelSwitchCallback: ((fromModel: string, toModel: string, reason: string) => void) | null = null;
+
+const resetModelTries = () => {
+  triedModels.clear();
+  currentModel = MODELS[0]; // Reset to first model
+};
+
+// Function to register model switch callback
+export const registerModelSwitchCallback = (callback: (fromModel: string, toModel: string, reason: string) => void) => {
+  modelSwitchCallback = callback;
+};
+
+// Function to notify model switch
+const notifyModelSwitch = (fromModel: string, toModel: string, reason: string) => {
+  if (modelSwitchCallback) {
+    modelSwitchCallback(fromModel, toModel, reason);
+  }
+};
+
+// Helper function to log AI response details
+const logAiResponse = (model: string, prompt: string, response: string, startTime: number) => {
+  const endTime = Date.now();
+  const duration = (endTime - startTime) / 1000; // seconds
+  const promptTokens = Math.ceil(prompt.length / 4); // Rough estimate: ~4 chars per token
+  const responseTokens = Math.ceil(response.length / 4); // Rough estimate: ~4 chars per token
+  const totalTokens = promptTokens + responseTokens;
+  
+  console.log(`🤖 AI Response Details:`);
+  console.log(`   📊 Model: ${model}`);
+  console.log(`   ⏱️  Duration: ${duration.toFixed(2)}s`);
+  console.log(`   📝 Prompt Tokens: ~${promptTokens}`);
+  console.log(`   💬 Response Tokens: ~${responseTokens}`);
+  console.log(`   🔢 Total Tokens: ~${totalTokens}`);
+  console.log(`   📄 Response Length: ${response.length} characters`);
+  console.log(`   📈 Tokens/Second: ${(totalTokens / duration).toFixed(1)}`);
+  console.log(`   ──────────────────────────────────────`);
+};
 
 const buildPrompt = ({ word, sourceLanguageName, examplesLanguageName, explanationLanguageName, targetLanguageCode, mode, userQuestion }: GenerateParams) => {
   const outputSchema = `
@@ -96,40 +144,74 @@ export async function generateAiContent(params: GenerateParams): Promise<AiResul
   }
 
   const prompt = buildPrompt(params);
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`;
-
-  const body = {
-    contents: [
-      {
-        parts: [{ text: prompt }]
+  
+  // Try models in order until one works
+  for (const model of MODELS) {
+    if (triedModels.has(model)) continue;
+    
+    try {
+      const startTime = Date.now();
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const body = { contents: [{ parts: [{ text: prompt }] }] };
+      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      
+      if (res.ok) {
+        const data = await res.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const jsonText = (text || '').trim();
+        
+        // Log AI response details
+        logAiResponse(model, prompt, text, startTime);
+        
+        if (jsonText.startsWith('```')) {
+          const cleaned = jsonText.replace(/^```[\w]*\n?/, '').replace(/```$/, '').trim();
+          const parsed = JSON.parse(cleaned) as AiResult;
+          resetModelTries(); // Reset on success
+          return parsed;
+        }
+        
+        const parsed = JSON.parse(jsonText) as AiResult;
+        resetModelTries(); // Reset on success
+        return parsed;
       }
-    ]
-  };
-
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(body)
-  });
-
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`Gemini API error: ${res.status} ${errText}`);
+      
+      // If we get a rate limit error, try the next model
+      if (res.status === 429) {
+        triedModels.add(model);
+        console.log(`Rate limit hit for ${model}, trying next model...`);
+        
+        // Notify model switch
+        const nextModel = MODELS[MODELS.indexOf(model) + 1];
+        if (nextModel) {
+          notifyModelSwitch(model, nextModel, "Rate limit exceeded - switching to backup model");
+        }
+        
+        continue;
+      }
+      
+      // For other errors, throw immediately
+      const errText = await res.text();
+      throw new Error(`Gemini API error: ${res.status} ${errText}`);
+      
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('429')) {
+        triedModels.add(model);
+        console.log(`Rate limit hit for ${model}, trying next model...`);
+        
+        // Notify model switch
+        const nextModel = MODELS[MODELS.indexOf(model) + 1];
+        if (nextModel) {
+          notifyModelSwitch(model, nextModel, "Rate limit exceeded - switching to backup model");
+        }
+        
+        continue;
+      }
+      throw error;
+    }
   }
-
-  const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-  // The model should return pure JSON. Attempt to parse robustly.
-  let jsonText = text.trim();
-  if (jsonText.startsWith('```')) {
-    jsonText = jsonText.replace(/^```[\w]*\n?/, '').replace(/```$/, '').trim();
-  }
-
-  const parsed = JSON.parse(jsonText) as AiResult;
-  return parsed;
+  
+  // If we've tried all models and still failed
+  throw new Error('All available models have hit rate limits. Please try again later.');
 }
 
 // Lightweight chat reply generator, constrained to the current word pair
@@ -138,76 +220,227 @@ export async function generateChatReply(params: {
   word2?: string; // translation/paired word (text2)
   chatLanguageName: string; // language to speak in
   userMessage: string;
-  sourceLanguageName: string; // known language (for occasional labels if needed)
+  sourceLanguageName: string; // user's native language
+  targetLanguageName?: string; // language being learned (language of word1)
   conversationStarted?: boolean; // avoid repeated greetings
+  conversationContext?: string; // previous conversation summary
 }): Promise<string> {
   const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
   if (!apiKey) throw new Error('Missing REACT_APP_GEMINI_API_KEY');
 
-  const { word1, word2, chatLanguageName, userMessage, sourceLanguageName, conversationStarted } = params;
+  const { word1, word2, chatLanguageName, userMessage, sourceLanguageName, targetLanguageName, conversationStarted, conversationContext } = params;
+  
+  // Determine the language of word1 (the language being learned)
+  const word1Language = targetLanguageName || sourceLanguageName; // fallback to sourceLanguageName if targetLanguageName not provided
+  
   const guard = `
-You are a focused language tutor.
-- ONLY discuss the single target word "${word1}". Do NOT discuss other topics or other words unless strictly necessary to explain this word.
-- If the user asks about unrelated topics, reply briefly and politely redirect to "${word1}".
-- Be concise, didactic, and supportive. Use ${chatLanguageName} for your reply.
-- You may provide tiny labels in ${sourceLanguageName} if necessary, but keep the main text in ${chatLanguageName}.
+You are a friendly, helpful AI assistant chatting with someone who is learning the word "${word1}".
 
-Style:
-- Keep a natural chat tone. Use short paragraphs.
-- Use simple inline emphasis like **bold** when needed.
-- ONLY when the user asks for examples/tips or when clearly helpful, append a small structured block using fenced code blocks:
-  \`\`\`examples
-  - example sentence 1
-  - example sentence 2
-  \`\`\`
-  \`\`\`tips
-  - short tip 1
-  - short tip 2
-  \`\`\`
-Do not include any other code blocks.
-${conversationStarted ? '- Do NOT start with greetings; continue the conversation naturally.' : ''}
+YOUR PERSONALITY:
+- Warm, friendly, and conversational
+- Knowledgeable and helpful
+- Natural and genuine in your responses
+- Patient and clear in explanations
+
+CONVERSATION STYLE:
+- Respond naturally in ${chatLanguageName}
+- Answer the user's question directly and clearly
+- Be helpful and informative
+- Keep responses SHORT and concise (3-4 sentences maximum)
+- Use simple formatting like **bold** for emphasis when needed
+- Write in a natural, conversational way
+- Don't give long explanations unless specifically asked
+
+CONVERSATION GUIDELINES:
+- Answer the user's question directly - don't redirect unnecessarily
+- If they ask about "${word1}" or language learning, provide helpful but brief details
+- If they ask about other topics, answer naturally and briefly
+- Be encouraging and positive
+- Keep the conversation flowing naturally
+- Don't use special formatting blocks or structured examples
+- Just give normal, conversational responses
+- Consider the conversation context when responding
+- Keep responses under 50 words unless specifically asked for more detail
+- DON'T constantly suggest continuing to learn the word - only mention it if the user specifically asks about learning
+- DON'T end every response with "we can continue learning" or similar phrases
+- It's okay to go off-topic sometimes, but don't force the conversation back to the word
+- IMPORTANT: When giving examples, use the language of "${word1}" (${word1Language}), not the user's native language (${sourceLanguageName})
+- If the user asks for examples of "${word1}", provide them in ${word1Language} language only
+- When giving example sentences, write the ENTIRE sentence in ${word1Language}, not mixed languages
+- Examples should be complete sentences in ${word1Language} language only
+- Use **bold** for emphasis when needed
+- Use line breaks (\\n) for better readability where appropriate
+${conversationStarted ? '- Continue naturally without greetings' : '- Start with a warm, friendly greeting'}
 `;
 
-  const prompt = `${guard}\n\nConversation language: ${chatLanguageName}\nTarget word: ${word1}\n\nUser: ${userMessage}\nTutor:`;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`;
-  const body = { contents: [{ parts: [{ text: prompt }] }] };
-  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`Gemini API error: ${res.status} ${errText}`);
+  const prompt = `${guard}
+
+CHAT CONTEXT:
+- Language: ${chatLanguageName}
+- Current Learning Focus: "${word1}" (in ${word1Language} language)
+- Translation: ${word2 ? `"${word2}"` : 'Not provided'}
+- User's Language: ${sourceLanguageName}
+- Language Being Learned: ${word1Language} (this is the language of "${word1}")
+${conversationContext ? `- Previous Conversation: ${conversationContext}` : ''}
+
+User: ${userMessage}
+
+AI Assistant:`;
+  
+  // Try models in order until one works
+  for (const model of MODELS) {
+    if (triedModels.has(model)) continue;
+    
+    try {
+      const startTime = Date.now();
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const body = { contents: [{ parts: [{ text: prompt }] }] };
+      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      
+      if (res.ok) {
+        const data = await res.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        
+        // Log AI response details
+        logAiResponse(model, prompt, text, startTime);
+        
+        resetModelTries(); // Reset on success
+        return (text || '').trim();
+      }
+      
+      // If we get a rate limit error, try the next model
+      if (res.status === 429) {
+        triedModels.add(model);
+        console.log(`Rate limit hit for ${model}, trying next model...`);
+        
+        // Notify model switch
+        const nextModel = MODELS[MODELS.indexOf(model) + 1];
+        if (nextModel) {
+          notifyModelSwitch(model, nextModel, "Rate limit exceeded - switching to backup model");
+        }
+        
+        continue;
+      }
+      
+      // For other errors, throw immediately
+      const errText = await res.text();
+      throw new Error(`Gemini API error: ${res.status} ${errText}`);
+      
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('429')) {
+        triedModels.add(model);
+        console.log(`Rate limit hit for ${model}, trying next model...`);
+        
+        // Notify model switch
+        const nextModel = MODELS[MODELS.indexOf(model) + 1];
+        if (nextModel) {
+          notifyModelSwitch(model, nextModel, "Rate limit exceeded - switching to backup model");
+        }
+        
+        continue;
+      }
+      throw error;
+    }
   }
-  const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  return (text || '').trim();
+  
+  // If we've tried all models and still failed
+  throw new Error('All available models have hit rate limits. Please try again later.');
 }
 
 // Multilingual greeting; uses presets for common languages, otherwise asks the model
 export async function generateChatGreeting(params: {
   word1: string;
   chatLanguageName: string;
+  sourceLanguageName?: string; // user's native language
+  targetLanguageName?: string; // language being learned (language of word1)
 }): Promise<string> {
-  const { word1, chatLanguageName } = params;
+  const { word1, chatLanguageName, sourceLanguageName, targetLanguageName } = params;
+  
+  // Determine the language of word1 (the language being learned)
+  const word1Language = targetLanguageName || sourceLanguageName || 'the target language';
   const presets: Record<string, string> = {
-    English: `Hello! We can chat here. I can help you with the word "${word1}". How can I help?`,
-    Turkish: `Merhaba! Buradan sohbet edebiliriz. "${word1}" kelimesi hakkında yardımcı olabilirim. Nasıl yardımcı olabilirim?`,
-    Russian: `Здравствуйте! Мы можем поболтать здесь. Я могу помочь с словом «${word1}». Чем могу помочь?`,
-    Spanish: `¡Hola! Podemos chatear aquí. Puedo ayudarte con la palabra "${word1}". ¿Cómo puedo ayudar?`,
-    French: `Bonjour ! Nous pouvons discuter ici. Je peux vous aider avec le mot « ${word1} ». Comment puis-je aider ?`,
-    German: `Hallo! Wir können hier chatten. Ich kann dir mit dem Wort „${word1}“ helfen. Wie kann ich helfen?`
+    English: `Hi! I'm here to help you with anything, especially with **${word1}**. How can I help you?`,
+    Turkish: `Merhaba! Burada her konuda yardım ederim, özellikle **${word1}** ile ilgili. Nasıl yardımcı olabilirim?`,
+    Russian: `Привет! Я здесь, чтобы помочь с чем угодно, особенно с **${word1}**. Как я могу помочь?`,
+    Spanish: `¡Hola! Estoy aquí para ayudarte con cualquier cosa, especialmente con **${word1}**. ¿Cómo puedo ayudarte?`,
+    French: `Salut ! Je suis là pour t'aider avec tout, surtout avec **${word1}**. Comment puis-je t'aider ?`,
+    German: `Hallo! Ich bin hier, um bei allem zu helfen, besonders mit **${word1}**. Wie kann ich dir helfen?`
   };
   if (presets[chatLanguageName]) return presets[chatLanguageName];
 
   const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
   if (!apiKey) return presets['English'];
 
-  const prompt = `Write a short friendly greeting in ${chatLanguageName} that says we can chat here and that I can help with the word "${word1}". End with a brief question like "How can I help?". Keep under 25 words.`;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`;
-  const body = { contents: [{ parts: [{ text: prompt }] }] };
-  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  if (!res.ok) return presets['English'];
-  const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || presets['English'];
-  return (text || presets['English']).trim();
+  const prompt = `You are a friendly AI assistant. Write a simple greeting in ${chatLanguageName} for someone learning the word "${word1}" in ${word1Language}.
+
+Your greeting should:
+- Be simple and friendly
+- Say you're here to help with anything, especially with **${word1}**
+- Ask how you can help them
+- Keep it short and natural (under 20 words)
+- Use **bold** for the word "${word1}" (not "word" or "kelime")
+- Use line breaks (\\n) where appropriate for better readability
+- No special formatting or emojis
+
+Make it feel friendly and helpful.`;
+  
+  // Try models in order until one works
+  for (const model of MODELS) {
+    if (triedModels.has(model)) continue;
+    
+    try {
+      const startTime = Date.now();
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const body = { contents: [{ parts: [{ text: prompt }] }] };
+      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      
+      if (res.ok) {
+        const data = await res.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || presets['English'];
+        
+        // Log AI response details
+        logAiResponse(model, prompt, text, startTime);
+        
+        resetModelTries(); // Reset on success
+        return (text || presets['English']).trim();
+      }
+      
+      // If we get a rate limit error, try the next model
+      if (res.status === 429) {
+        triedModels.add(model);
+        console.log(`Rate limit hit for ${model}, trying next model...`);
+        
+        // Notify model switch
+        const nextModel = MODELS[MODELS.indexOf(model) + 1];
+        if (nextModel) {
+          notifyModelSwitch(model, nextModel, "Rate limit exceeded - switching to backup model");
+        }
+        
+        continue;
+      }
+      
+      // For other errors, return preset
+      return presets['English'];
+      
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('429')) {
+        triedModels.add(model);
+        console.log(`Rate limit hit for ${model}, trying next model...`);
+        
+        // Notify model switch
+        const nextModel = MODELS[MODELS.indexOf(model) + 1];
+        if (nextModel) {
+          notifyModelSwitch(model, nextModel, "Rate limit exceeded - switching to backup model");
+        }
+        
+        continue;
+      }
+      return presets['English'];
+    }
+  }
+  
+  // If we've tried all models and still failed
+  return presets['English'];
 }
 
 // Fetch only a concise definition in a specific explanation language
@@ -223,24 +456,75 @@ export async function generateDefinitionOnly(params: {
   const { word, examplesLanguageName, explanationLanguageName, sourceLanguageName } = params;
   const prompt = `You are a helpful language tutor. The user is learning the word "${word}".
 - Examples (if referenced) are in ${examplesLanguageName}.
-- Provide ONLY a concise, beginner-friendly definition in ${explanationLanguageName}.
-- Keep it to one or two short sentences. Avoid extra commentary.
+- Provide a detailed, beginner-friendly definition in ${explanationLanguageName}.
+- Include: meaning, part of speech, common usage contexts, and any important nuances.
+- Make it comprehensive but still accessible for language learners.
+- Aim for 3-4 sentences that cover the word thoroughly.
+- Avoid extra commentary, focus on the word itself.
 Return ONLY valid JSON like: { "definition": string }`;
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`;
-  const body = { contents: [{ parts: [{ text: prompt }] }] };
-  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`Gemini API error: ${res.status} ${errText}`);
+  // Try models in order until one works
+  for (const model of MODELS) {
+    if (triedModels.has(model)) continue;
+    
+    try {
+      const startTime = Date.now();
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const body = { contents: [{ parts: [{ text: prompt }] }] };
+      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      
+      if (res.ok) {
+        const data = await res.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        let jsonText = (text || '').trim();
+        if (jsonText.startsWith('```')) {
+          jsonText = jsonText.replace(/^```[\w]*\n?/, '').replace(/```$/, '').trim();
+        }
+        const parsed = JSON.parse(jsonText) as { definition?: string };
+        
+        // Log AI response details
+        logAiResponse(model, prompt, text, startTime);
+        
+        resetModelTries(); // Reset on success
+        return parsed.definition || '';
+      }
+      
+      // If we get a rate limit error, try the next model
+      if (res.status === 429) {
+        triedModels.add(model);
+        console.log(`Rate limit hit for ${model}, trying next model...`);
+        
+        // Notify model switch
+        const nextModel = MODELS[MODELS.indexOf(model) + 1];
+        if (nextModel) {
+          notifyModelSwitch(model, nextModel, "Rate limit exceeded - switching to backup model");
+        }
+        
+        continue;
+      }
+      
+      // For other errors, throw immediately
+      const errText = await res.text();
+      throw new Error(`Gemini API error: ${res.status} ${errText}`);
+      
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('429')) {
+        triedModels.add(model);
+        console.log(`Rate limit hit for ${model}, trying next model...`);
+        
+        // Notify model switch
+        const nextModel = MODELS[MODELS.indexOf(model) + 1];
+        if (nextModel) {
+          notifyModelSwitch(model, nextModel, "Rate limit exceeded - switching to backup model");
+        }
+        
+        continue;
+      }
+      throw error;
+    }
   }
-  const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  let jsonText = (text || '').trim();
-  if (jsonText.startsWith('```')) {
-    jsonText = jsonText.replace(/^```[\w]*\n?/, '').replace(/```$/, '').trim();
-  }
-  const parsed = JSON.parse(jsonText) as { definition?: string };
-  return parsed.definition || '';
+  
+  // If we've tried all models and still failed
+  throw new Error('All available models have hit rate limits. Please try again later.');
 }
 

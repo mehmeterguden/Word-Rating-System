@@ -1,3 +1,5 @@
+import languagesData from '../data/languages.json';
+
 export const DEFAULT_LANGUAGE1 = 'English';
 export const DEFAULT_LANGUAGE2 = 'Turkish';
 export const DEFAULT_SEPARATOR = ' - ';
@@ -6,240 +8,52 @@ export interface Language {
   code: string;
   name: string;
   nativeName: string;
+  flag: string;
 }
 
-export const LANGUAGES: Language[] = [
-  { code: 'en', name: 'English', nativeName: 'English' },
-  { code: 'tr', name: 'Turkish', nativeName: 'Türkçe' },
-  { code: 'es', name: 'Spanish', nativeName: 'Español' },
-  { code: 'fr', name: 'French', nativeName: 'Français' },
-  { code: 'de', name: 'German', nativeName: 'Deutsch' },
-  { code: 'it', name: 'Italian', nativeName: 'Italiano' },
-  { code: 'pt', name: 'Portuguese', nativeName: 'Português' },
-  { code: 'ru', name: 'Russian', nativeName: 'Русский' },
-  { code: 'ja', name: 'Japanese', nativeName: '日本語' },
-  { code: 'ko', name: 'Korean', nativeName: '한국어' },
-  { code: 'zh', name: 'Chinese', nativeName: '中文' },
-  { code: 'ar', name: 'Arabic', nativeName: 'العربية' },
-  { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी' },
-  { code: 'nl', name: 'Dutch', nativeName: 'Nederlands' },
-  { code: 'pl', name: 'Polish', nativeName: 'Polski' },
-  { code: 'sv', name: 'Swedish', nativeName: 'Svenska' },
-  { code: 'da', name: 'Danish', nativeName: 'Dansk' },
-  { code: 'no', name: 'Norwegian', nativeName: 'Norsk' },
-  { code: 'fi', name: 'Finnish', nativeName: 'Suomi' },
-  { code: 'cs', name: 'Czech', nativeName: 'Čeština' },
-  { code: 'hu', name: 'Hungarian', nativeName: 'Magyar' },
-  { code: 'ro', name: 'Romanian', nativeName: 'Română' },
-  { code: 'bg', name: 'Bulgarian', nativeName: 'Български' },
-  { code: 'hr', name: 'Croatian', nativeName: 'Hrvatski' },
-  { code: 'sk', name: 'Slovak', nativeName: 'Slovenčina' },
-  { code: 'sl', name: 'Slovenian', nativeName: 'Slovenščina' },
-  { code: 'et', name: 'Estonian', nativeName: 'Eesti' },
-  { code: 'lv', name: 'Latvian', nativeName: 'Latviešu' },
-  { code: 'lt', name: 'Lithuanian', nativeName: 'Lietuvių' },
-  { code: 'mt', name: 'Maltese', nativeName: 'Malti' },
-  { code: 'el', name: 'Greek', nativeName: 'Ελληνικά' },
-  { code: 'he', name: 'Hebrew', nativeName: 'עברית' },
-  { code: 'th', name: 'Thai', nativeName: 'ไทย' },
-  { code: 'vi', name: 'Vietnamese', nativeName: 'Tiếng Việt' },
-  { code: 'id', name: 'Indonesian', nativeName: 'Bahasa Indonesia' },
-  { code: 'ms', name: 'Malay', nativeName: 'Bahasa Melayu' },
-  { code: 'tl', name: 'Filipino', nativeName: 'Filipino' },
-  { code: 'bn', name: 'Bengali', nativeName: 'বাংলা' },
-  { code: 'ur', name: 'Urdu', nativeName: 'اردو' },
-  { code: 'fa', name: 'Persian', nativeName: 'فارسی' },
-  { code: 'uk', name: 'Ukrainian', nativeName: 'Українська' },
-  { code: 'be', name: 'Belarusian', nativeName: 'Беларуская' },
-  { code: 'ka', name: 'Georgian', nativeName: 'ქართული' },
-  { code: 'hy', name: 'Armenian', nativeName: 'Հայերեն' },
-  { code: 'az', name: 'Azerbaijani', nativeName: 'Azərbaycan' },
-  { code: 'kk', name: 'Kazakh', nativeName: 'Қазақ' },
-  { code: 'ky', name: 'Kyrgyz', nativeName: 'Кыргызча' },
-  { code: 'uz', name: 'Uzbek', nativeName: 'Oʻzbekcha' },
-  { code: 'tg', name: 'Tajik', nativeName: 'Тоҷикӣ' },
-  { code: 'mn', name: 'Mongolian', nativeName: 'Монгол' },
-  { code: 'ne', name: 'Nepali', nativeName: 'नेपाली' },
-  { code: 'si', name: 'Sinhala', nativeName: 'සිංහල' },
-  { code: 'my', name: 'Burmese', nativeName: 'မြန်မာ' },
-  { code: 'km', name: 'Khmer', nativeName: 'ខ្មែរ' },
-  { code: 'lo', name: 'Lao', nativeName: 'ລາວ' },
-  { code: 'am', name: 'Amharic', nativeName: 'አማርኛ' },
-  { code: 'sw', name: 'Swahili', nativeName: 'Kiswahili' },
-  { code: 'zu', name: 'Zulu', nativeName: 'isiZulu' },
-  { code: 'af', name: 'Afrikaans', nativeName: 'Afrikaans' },
-  { code: 'is', name: 'Icelandic', nativeName: 'Íslenska' },
-  { code: 'ga', name: 'Irish', nativeName: 'Gaeilge' },
-  { code: 'cy', name: 'Welsh', nativeName: 'Cymraeg' },
-  { code: 'eu', name: 'Basque', nativeName: 'Euskara' },
-  { code: 'ca', name: 'Catalan', nativeName: 'Català' },
-  { code: 'gl', name: 'Galician', nativeName: 'Galego' },
-  { code: 'sq', name: 'Albanian', nativeName: 'Shqip' },
-  { code: 'mk', name: 'Macedonian', nativeName: 'Македонски' },
-  { code: 'sr', name: 'Serbian', nativeName: 'Српски' },
-  { code: 'bs', name: 'Bosnian', nativeName: 'Bosanski' },
-  { code: 'me', name: 'Montenegrin', nativeName: 'Crnogorski' },
-  { code: 'ku', name: 'Kurdish', nativeName: 'Kurdî' },
-  { code: 'ps', name: 'Pashto', nativeName: 'پښتو' },
-  { code: 'sd', name: 'Sindhi', nativeName: 'سنڌي' },
-  { code: 'pa', name: 'Punjabi', nativeName: 'ਪੰਜਾਬੀ' },
-  { code: 'gu', name: 'Gujarati', nativeName: 'ગુજરાતી' },
-  { code: 'or', name: 'Odia', nativeName: 'ଓଡ଼ିଆ' },
-  { code: 'ta', name: 'Tamil', nativeName: 'தமிழ்' },
-  { code: 'te', name: 'Telugu', nativeName: 'తెలుగు' },
-  { code: 'kn', name: 'Kannada', nativeName: 'ಕನ್ನಡ' },
-  { code: 'ml', name: 'Malayalam', nativeName: 'മലയാളം' },
-  { code: 'as', name: 'Assamese', nativeName: 'অসমীয়া' },
-  { code: 'mr', name: 'Marathi', nativeName: 'मराठी' },
-  { code: 'sa', name: 'Sanskrit', nativeName: 'संस्कृतम्' },
-  { code: 'bo', name: 'Tibetan', nativeName: 'བོད་ཡིག' },
-  { code: 'dz', name: 'Dzongkha', nativeName: 'རྫོང་ཁ' },
-  { code: 'ug', name: 'Uyghur', nativeName: 'ئۇيغۇرچە' },
-  { code: 'ii', name: 'Sichuan Yi', nativeName: 'ꆈꌠꉙ' },
-  { code: 'br', name: 'Breton', nativeName: 'Brezhoneg' },
-  { code: 'co', name: 'Corsican', nativeName: 'Corsu' },
-  { code: 'fy', name: 'Western Frisian', nativeName: 'Frysk' },
-  { code: 'lb', name: 'Luxembourgish', nativeName: 'Lëtzebuergesch' },
-  { code: 'rm', name: 'Romansh', nativeName: 'Rumantsch' },
-  { code: 'wa', name: 'Walloon', nativeName: 'Walon' },
-  { code: 'fur', name: 'Friulian', nativeName: 'Furlan' },
-  { code: 'sc', name: 'Sardinian', nativeName: 'Sardu' },
-  { code: 'vec', name: 'Venetian', nativeName: 'Vèneto' },
-  { code: 'pms', name: 'Piedmontese', nativeName: 'Piemontèis' },
-  { code: 'lmo', name: 'Lombard', nativeName: 'Lumbaart' },
-  { code: 'nap', name: 'Neapolitan', nativeName: 'Nnapulitano' },
-  { code: 'scn', name: 'Sicilian', nativeName: 'Sicilianu' },
-  { code: 'lij', name: 'Ligurian', nativeName: 'Ligure' },
-  { code: 'eml', name: 'Emilian-Romagnol', nativeName: 'Emiliàn e rumagnòl' },
-  { code: 'pcd', name: 'Picard', nativeName: 'Picard' },
-  { code: 'nrm', name: 'Norman', nativeName: 'Nouormand' },
-  { code: 'gsw', name: 'Swiss German', nativeName: 'Schwiizertüütsch' },
-  { code: 'bar', name: 'Bavarian', nativeName: 'Boarisch' },
-  { code: 'ksh', name: 'Colognian', nativeName: 'Kölsch' },
-  { code: 'nds', name: 'Low German', nativeName: 'Plattdüütsch' },
-  { code: 'stq', name: 'Saterland Frisian', nativeName: 'Seeltersk' },
-  { code: 'vls', name: 'West Flemish', nativeName: 'West-Vlams' },
-  { code: 'zea', name: 'Zeelandic', nativeName: 'Zeêuws' },
-  { code: 'li', name: 'Limburgish', nativeName: 'Limburgs' },
-  { code: 'frr', name: 'North Frisian', nativeName: 'Nordfriisk' },
-  { code: 'sco', name: 'Scots', nativeName: 'Scots' },
-  { code: 'gd', name: 'Scottish Gaelic', nativeName: 'Gàidhlig' },
-  { code: 'kw', name: 'Cornish', nativeName: 'Kernewek' },
-  { code: 'gv', name: 'Manx', nativeName: 'Gaelg' },
-  { code: 'brx', name: 'Bodo', nativeName: 'बड़ो' },
-  { code: 'doi', name: 'Dogri', nativeName: 'डोगरी' },
-  { code: 'mni', name: 'Manipuri', nativeName: 'মৈতৈলোন্' },
-  { code: 'sat', name: 'Santali', nativeName: 'ᱥᱟᱱᱛᱟᱲᱤ' },
-  { code: 'ks', name: 'Kashmiri', nativeName: 'کٲشُر' },
-  { code: 'kok', name: 'Konkani', nativeName: 'कोंकणी' },
-  { code: 'mai', name: 'Maithili', nativeName: 'मैथिली' },
-  { code: 'bho', name: 'Bhojpuri', nativeName: 'भोजपुरी' },
-  { code: 'awa', name: 'Awadhi', nativeName: 'अवधी' },
-  { code: 'raj', name: 'Rajasthani', nativeName: 'राजस्थानी' },
-  { code: 'hne', name: 'Chhattisgarhi', nativeName: 'छत्तीसगढ़ी' },
-  { code: 'mag', name: 'Magahi', nativeName: 'मगही' },
-  { code: 'bgn', name: 'Western Balochi', nativeName: 'روچ کپتین بلوچی' },
-  { code: 'lrc', name: 'Northern Luri', nativeName: 'لوری شمالی' },
-  { code: 'sdh', name: 'Southern Kurdish', nativeName: 'کوردی خوارگ' },
-  { code: 'ckb', name: 'Central Kurdish', nativeName: 'کوردی ناوەندی' },
-  { code: 'luz', name: 'Southern Luri', nativeName: 'لوری جنوبی' },
-  { code: 'mzn', name: 'Mazanderani', nativeName: 'مازرونی' },
-  { code: 'glk', name: 'Gilaki', nativeName: 'گیلکی' },
-  { code: 'azb', name: 'South Azerbaijani', nativeName: 'تۆرکجه' },
-  { code: 'kaa', name: 'Kara-Kalpak', nativeName: 'Qaraqalpaqsha' },
-  { code: 'crh', name: 'Crimean Tatar', nativeName: 'Qırımtatarca' },
-  { code: 'kum', name: 'Kumyk', nativeName: 'Къумукъ' },
-  { code: 'nog', name: 'Nogai', nativeName: 'Ногай тили' },
-  { code: 'alt', name: 'Southern Altai', nativeName: 'Алтай тили' },
-  { code: 'tyv', name: 'Tuvan', nativeName: 'Тыва дыл' },
-  { code: 'xal', name: 'Kalmyk', nativeName: 'Хальмг' },
-  { code: 'bxr', name: 'Buryat', nativeName: 'Буряад хэлэн' },
-  { code: 'sah', name: 'Yakut', nativeName: 'Саха тыла' },
-  { code: 'ce', name: 'Chechen', nativeName: 'Нохчийн мотт' },
-  { code: 'ab', name: 'Abkhazian', nativeName: 'Аҧсуа бызшәа' },
-  { code: 'os', name: 'Ossetian', nativeName: 'Ирон æвзаг' },
-  { code: 'kbd', name: 'Kabardian', nativeName: 'Адыгэбзэ' },
-  { code: 'ady', name: 'Adyghe', nativeName: 'Адыгэбзэ' },
-  { code: 'lez', name: 'Lezghian', nativeName: 'Лезги чӏал' },
-  { code: 'av', name: 'Avaric', nativeName: 'Авар мацӏ' },
-  { code: 'inh', name: 'Ingush', nativeName: 'ГӀалгӀай мотт' },
-  { code: 'lbe', name: 'Lak', nativeName: 'Лакку маз' },
-  { code: 'dar', name: 'Dargwa', nativeName: 'Дарган мез' },
-  { code: 'tab', name: 'Tabasaran', nativeName: 'Табасаран чӏал' },
-  { code: 'rut', name: 'Rutul', nativeName: 'Мыхӏабишды чӏел' },
-  { code: 'tkr', name: 'Tsakhur', nativeName: 'Цӏаӏхна миз' },
-  { code: 'agx', name: 'Aghul', nativeName: 'Агъул чӏал' },
-  { code: 'udi', name: 'Udi', nativeName: 'Удин муз' },
-  { code: 'tcy', name: 'Tulu', nativeName: 'ತುಳು' },
-  { code: 'knn', name: 'Konkani (Devanagari)', nativeName: 'कोंकणी' },
-  { code: 'gom', name: 'Konkani (Goan)', nativeName: 'कोंकणी' },
-  { code: 'new', name: 'Newari', nativeName: 'नेपाल भाषा' },
-  { code: 'pi', name: 'Pali', nativeName: 'पाऴि' },
-  { code: 'pra', name: 'Prakrit', nativeName: 'प्राकृत' },
-  { code: 'sa', name: 'Sanskrit', nativeName: 'संस्कृतम्' },
-  { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी' },
-  { code: 'bn', name: 'Bengali', nativeName: 'বাংলা' },
-  { code: 'pa', name: 'Punjabi', nativeName: 'ਪੰਜਾਬੀ' },
-  { code: 'gu', name: 'Gujarati', nativeName: 'ગુજરાતી' },
-  { code: 'or', name: 'Odia', nativeName: 'ଓଡ଼ିଆ' },
-  { code: 'ta', name: 'Tamil', nativeName: 'தமிழ்' },
-  { code: 'te', name: 'Telugu', nativeName: 'తెలుగు' },
-  { code: 'kn', name: 'Kannada', nativeName: 'ಕನ್ನಡ' },
-  { code: 'ml', name: 'Malayalam', nativeName: 'മലയാളം' },
-  { code: 'as', name: 'Assamese', nativeName: 'অসমীয়া' },
-  { code: 'mr', name: 'Marathi', nativeName: 'मराठी' },
-  { code: 'ne', name: 'Nepali', nativeName: 'नेपाली' },
-  { code: 'si', name: 'Sinhala', nativeName: 'සිංහල' },
-  { code: 'my', name: 'Burmese', nativeName: 'မြန်မာ' },
-  { code: 'km', name: 'Khmer', nativeName: 'ខ្មែរ' },
-  { code: 'lo', name: 'Lao', nativeName: 'ລາວ' },
-  { code: 'th', name: 'Thai', nativeName: 'ไทย' },
-  { code: 'vi', name: 'Vietnamese', nativeName: 'Tiếng Việt' },
-  { code: 'id', name: 'Indonesian', nativeName: 'Bahasa Indonesia' },
-  { code: 'ms', name: 'Malay', nativeName: 'Bahasa Melayu' },
-  { code: 'tl', name: 'Filipino', nativeName: 'Filipino' },
-  { code: 'jv', name: 'Javanese', nativeName: 'Basa Jawa' },
-  { code: 'su', name: 'Sundanese', nativeName: 'Basa Sunda' },
-  { code: 'min', name: 'Minangkabau', nativeName: 'Baso Minang' },
-  { code: 'ace', name: 'Acehnese', nativeName: 'Bahsa Acèh' },
-  { code: 'ban', name: 'Balinese', nativeName: 'Basa Bali' },
-  { code: 'bug', name: 'Buginese', nativeName: 'ᨅᨔ ᨕᨘᨁᨗ' },
-  { code: 'mad', name: 'Madurese', nativeName: 'Basa Madura' },
-  { code: 'bjn', name: 'Banjarese', nativeName: 'Bahasa Banjar' },
-  { code: 'gor', name: 'Gorontalo', nativeName: 'Bahasa Hulontalo' },
-  { code: 'mak', name: 'Makassarese', nativeName: 'Basa Mangkasara' },
-  { code: 'nij', name: 'Ngaju', nativeName: 'Bahasa Ngaju' },
-  { code: 'rej', name: 'Rejang', nativeName: 'Baso Jang' },
-  { code: 'sas', name: 'Sasak', nativeName: 'Basa Sasak' },
-  { code: 'sun', name: 'Sundanese', nativeName: 'Basa Sunda' },
-  { code: 'tet', name: 'Tetum', nativeName: 'Lia-Tetun' },
-  { code: 'haw', name: 'Hawaiian', nativeName: 'ʻŌlelo Hawaiʻi' },
-  { code: 'mi', name: 'Maori', nativeName: 'Te Reo Māori' },
-  { code: 'sm', name: 'Samoan', nativeName: 'Gagana Samoa' },
-  { code: 'to', name: 'Tongan', nativeName: 'Lea Faka-Tonga' },
-  { code: 'fj', name: 'Fijian', nativeName: 'Vosa Vakaviti' },
-  { code: 'tvl', name: 'Tuvaluan', nativeName: 'Te Ggana Tuuvalu' },
-  { code: 'gil', name: 'Gilbertese', nativeName: 'Taetae ni Kiribati' },
-  { code: 'mh', name: 'Marshallese', nativeName: 'Kajin M̧ajeļ' },
-  { code: 'na', name: 'Nauruan', nativeName: 'Dorerin Naoero' },
-  { code: 'pau', name: 'Palauan', nativeName: 'Tekoi er a Belau' },
-  { code: 'ch', name: 'Chamorro', nativeName: 'Chamoru' },
-  { code: 'yap', name: 'Yapese', nativeName: 'Wa\'ab' },
-  { code: 'kos', name: 'Kosraean', nativeName: 'Kosrae' },
-  { code: 'pon', name: 'Pohnpeian', nativeName: 'Pohnpei' },
-  { code: 'chk', name: 'Chuukese', nativeName: 'Chuuk' },
-  { code: 'wls', name: 'Wallisian', nativeName: 'Fakaʻuvea' },
-  { code: 'fud', name: 'Futunan', nativeName: 'Fakafutuna' },
-  { code: 'rar', name: 'Rarotongan', nativeName: 'Māori Kūki ʻĀirani' },
-  { code: 'tah', name: 'Tahitian', nativeName: 'Reo Tahiti' },
-  { code: 'ty', name: 'Tahitian', nativeName: 'Reo Māʻohi' },
-  { code: 'niu', name: 'Niuean', nativeName: 'Ko e vagahau Niuē' },
-  { code: 'rar', name: 'Rarotongan', nativeName: 'Māori Kūki ʻĀirani' },
-  { code: 'tkl', name: 'Tokelauan', nativeName: 'Gagana Tokelau' },
-  { code: 'pih', name: 'Pitcairn-Norfolk', nativeName: 'Pitkern' },
-  { code: 'en', name: 'English', nativeName: 'English' },
-  { code: 'tr', name: 'Turkish', nativeName: 'Türkçe' }
-];
+// Load languages from JSON file
+export const LANGUAGES: Language[] = languagesData.languages;
+
+// Validation function to check for duplicates
+export const validateLanguages = (): { hasDuplicates: boolean; duplicates: string[] } => {
+  const seenNames = new Set<string>();
+  const seenCodes = new Set<string>();
+  const duplicates: string[] = [];
+
+  for (const lang of LANGUAGES) {
+    if (seenNames.has(lang.name)) {
+      duplicates.push(`Duplicate name: ${lang.name}`);
+    } else {
+      seenNames.add(lang.name);
+    }
+
+    if (seenCodes.has(lang.code)) {
+      duplicates.push(`Duplicate code: ${lang.code}`);
+    } else {
+      seenCodes.add(lang.code);
+    }
+  }
+
+  return {
+    hasDuplicates: duplicates.length > 0,
+    duplicates
+  };
+};
+
+// Get unique languages by name (in case we need to filter duplicates)
+export const getUniqueLanguages = (): Language[] => {
+  const seenNames = new Set<string>();
+  const uniqueLanguages: Language[] = [];
+
+  for (const lang of LANGUAGES) {
+    if (!seenNames.has(lang.name)) {
+      seenNames.add(lang.name);
+      uniqueLanguages.push(lang);
+    }
+  }
+
+  return uniqueLanguages;
+};
 
 export const getLanguageByCode = (code: string): Language | undefined => {
   return LANGUAGES.find(lang => lang.code === code);
@@ -247,4 +61,16 @@ export const getLanguageByCode = (code: string): Language | undefined => {
 
 export const getLanguageByName = (name: string): Language | undefined => {
   return LANGUAGES.find(lang => lang.name === name || lang.nativeName === name);
+};
+
+// Get language flag directly from the language object
+export const getLanguageFlag = (langName: string): string => {
+  const lang = LANGUAGES.find(l => l.name === langName);
+  return lang ? lang.flag : '🌐';
+};
+
+// Get language display name
+export const getLanguageDisplay = (langName: string): string => {
+  const lang = LANGUAGES.find(l => l.name === langName);
+  return lang ? `${lang.name} (${lang.nativeName})` : langName;
 };

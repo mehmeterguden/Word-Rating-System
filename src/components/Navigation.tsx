@@ -133,6 +133,7 @@ const Navigation: React.FC<NavigationProps> = ({
                 <span>Settings</span>
               </div>
             </button>
+
           </div>
 
           {/* Right side - Debug and Set Selector */}

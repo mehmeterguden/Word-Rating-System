@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { WordSet } from '../types';
-import { LANGUAGES, getLanguageByName } from '../utils/languages';
+import { LANGUAGES, getLanguageByName, getUniqueLanguages } from '../utils/languages';
 
 interface AddWordsProps {
   onAddWords: (wordPairs: { text1: string; text2: string; language1Name: string; language2Name: string }[]) => void;
@@ -31,6 +31,14 @@ const AddWords: React.FC<AddWordsProps> = ({
   const [showLang2Dropdown, setShowLang2Dropdown] = useState(false);
   const [searchLang1, setSearchLang1] = useState('');
   const [searchLang2, setSearchLang2] = useState('');
+  const [selectedLang1Index, setSelectedLang1Index] = useState(-1);
+  const [selectedLang2Index, setSelectedLang2Index] = useState(-1);
+
+  // Refs for dropdowns
+  const lang1DropdownRef = useRef<HTMLDivElement>(null);
+  const lang2DropdownRef = useRef<HTMLDivElement>(null);
+  const lang1SearchRef = useRef<HTMLInputElement>(null);
+  const lang2SearchRef = useRef<HTMLInputElement>(null);
 
   const activeSet = wordSets.find(set => set.id === activeSetId);
 
@@ -39,12 +47,12 @@ const AddWords: React.FC<AddWordsProps> = ({
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Element;
       if (!target.closest('.language-dropdown')) {
-        // Don't close if clicking on search input or its container
-        if (target.closest('.search-input-container')) {
-          return;
-        }
         setShowLang1Dropdown(false);
         setShowLang2Dropdown(false);
+        setSearchLang1('');
+        setSearchLang2('');
+        setSelectedLang1Index(-1);
+        setSelectedLang2Index(-1);
       }
     };
 
@@ -56,6 +64,93 @@ const AddWords: React.FC<AddWordsProps> = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showLang1Dropdown, showLang2Dropdown]);
+
+  // Handle keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (showLang1Dropdown) {
+        handleLang1KeyDown(event);
+      } else if (showLang2Dropdown) {
+        handleLang2KeyDown(event);
+      }
+    };
+
+    if (showLang1Dropdown || showLang2Dropdown) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showLang1Dropdown, showLang2Dropdown, searchLang1, searchLang2]);
+
+  const handleLang1KeyDown = (event: KeyboardEvent) => {
+    const filteredLanguages = getFilteredLanguages(searchLang1);
+    
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        setSelectedLang1Index(prev => 
+          prev < filteredLanguages.length - 1 ? prev + 1 : 0
+        );
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        setSelectedLang1Index(prev => 
+          prev > 0 ? prev - 1 : filteredLanguages.length - 1
+        );
+        break;
+      case 'Enter':
+        event.preventDefault();
+        if (selectedLang1Index >= 0 && selectedLang1Index < filteredLanguages.length) {
+          const selectedLang = filteredLanguages[selectedLang1Index];
+          setLanguage1(selectedLang.name);
+          setShowLang1Dropdown(false);
+          setSearchLang1('');
+          setSelectedLang1Index(-1);
+        }
+        break;
+      case 'Escape':
+        setShowLang1Dropdown(false);
+        setSearchLang1('');
+        setSelectedLang1Index(-1);
+        break;
+    }
+  };
+
+  const handleLang2KeyDown = (event: KeyboardEvent) => {
+    const filteredLanguages = getFilteredLanguages(searchLang2);
+    
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        setSelectedLang2Index(prev => 
+          prev < filteredLanguages.length - 1 ? prev + 1 : 0
+        );
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        setSelectedLang2Index(prev => 
+          prev > 0 ? prev - 1 : filteredLanguages.length - 1
+        );
+        break;
+      case 'Enter':
+        event.preventDefault();
+        if (selectedLang2Index >= 0 && selectedLang2Index < filteredLanguages.length) {
+          const selectedLang = filteredLanguages[selectedLang2Index];
+          setLanguage2(selectedLang.name);
+          setShowLang2Dropdown(false);
+          setSearchLang2('');
+          setSelectedLang2Index(-1);
+        }
+        break;
+      case 'Escape':
+        setShowLang2Dropdown(false);
+        setSearchLang2('');
+        setSelectedLang2Index(-1);
+        break;
+    }
+  };
 
   // Update preview when input or settings change
   useEffect(() => {
@@ -104,96 +199,25 @@ const AddWords: React.FC<AddWordsProps> = ({
 
   const getFilteredLanguages = (searchTerm: string) => {
     if (!searchTerm.trim()) {
-      return LANGUAGES; // Show all languages when no search term
+      return getUniqueLanguages(); // Show all unique languages when no search term
     }
-    return LANGUAGES.filter(lang => 
-      lang.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lang.nativeName.toLowerCase().includes(searchTerm.toLowerCase())
+    const searchLower = searchTerm.toLowerCase();
+    return getUniqueLanguages().filter(lang => 
+      lang.name.toLowerCase().includes(searchLower) ||
+      lang.nativeName.toLowerCase().includes(searchLower) ||
+      lang.code.toLowerCase().includes(searchLower)
     );
   };
 
   const getLanguageDisplay = (langName: string) => {
-    const lang = LANGUAGES.find(l => l.name === langName);
+    const lang = getUniqueLanguages().find(l => l.name === langName);
     return lang ? `${lang.name} (${lang.nativeName})` : langName;
   };
 
   const getLanguageFlag = (langName: string) => {
-    const lang = LANGUAGES.find(l => l.name === langName);
-    if (!lang) return '🌐';
-    
-    const flagMap: { [key: string]: string } = {
-      'English': '🇺🇸',
-      'Turkish': '🇹🇷',
-      'Spanish': '🇪🇸',
-      'French': '🇫🇷',
-      'German': '🇩🇪',
-      'Italian': '🇮🇹',
-      'Portuguese': '🇵🇹',
-      'Russian': '🇷🇺',
-      'Japanese': '🇯🇵',
-      'Korean': '🇰🇷',
-      'Chinese': '🇨🇳',
-      'Arabic': '🇸🇦',
-      'Hindi': '🇮🇳',
-      'Dutch': '🇳🇱',
-      'Swedish': '🇸🇪',
-      'Danish': '🇩🇰',
-      'Norwegian': '🇳🇴',
-      'Finnish': '🇫🇮',
-      'Polish': '🇵🇱',
-      'Czech': '🇨🇿',
-      'Slovak': '🇸🇰',
-      'Hungarian': '🇭🇺',
-      'Romanian': '🇷🇴',
-      'Bulgarian': '🇧🇬',
-      'Croatian': '🇭🇷',
-      'Serbian': '🇷🇸',
-      'Slovenian': '🇸🇮',
-      'Estonian': '🇪🇪',
-      'Latvian': '🇱🇻',
-      'Lithuanian': '🇱🇹',
-      'Greek': '🇬🇷',
-      'Hebrew': '🇮🇱',
-      'Thai': '🇹🇭',
-      'Vietnamese': '🇻🇳',
-      'Indonesian': '🇮🇩',
-      'Malay': '🇲🇾',
-      'Persian': '🇮🇷',
-      'Urdu': '🇵🇰',
-      'Bengali': '🇧🇩',
-      'Tamil': '🇮🇳',
-      'Telugu': '🇮🇳',
-      'Malayalam': '🇮🇳',
-      'Kannada': '🇮🇳',
-      'Gujarati': '🇮🇳',
-      'Punjabi': '🇮🇳',
-      'Marathi': '🇮🇳',
-      'Nepali': '🇳🇵',
-      'Sinhala': '🇱🇰',
-      'Burmese': '🇲🇲',
-      'Khmer': '🇰🇭',
-      'Lao': '🇱🇦',
-      'Mongolian': '🇲🇳',
-      'Georgian': '🇬🇪',
-      'Amharic': '🇪🇹',
-      'Swahili': '🇹🇿',
-      'Zulu': '🇿🇦',
-      'Afrikaans': '🇿🇦',
-      'Icelandic': '🇮🇸',
-      'Maltese': '🇲🇹',
-      'Welsh': '🇬🇧',
-      'Irish': '🇮🇪',
-      'Basque': '🇪🇸',
-      'Catalan': '🇪🇸',
-      'Galician': '🇪🇸',
-      'Albanian': '🇦🇱',
-      'Macedonian': '🇲🇰',
-      'Bosnian': '🇧🇦',
-      'Montenegrin': '🇲🇪',
-      'Azerbaijan': '🇦🇿'
-    };
-    
-    return flagMap[langName] || '🌐';
+    const lang = getUniqueLanguages().find(l => l.name === langName);
+    return lang ? lang.flag : '🌐';
+
   };
 
   const separatorExamples = [
@@ -203,6 +227,54 @@ const AddWords: React.FC<AddWordsProps> = ({
     { symbol: ':', name: 'Colon', example: 'hello : merhaba' },
     { symbol: '→', name: 'Arrow', example: 'hello → merhaba' }
   ];
+
+  const handleLang1DropdownToggle = () => {
+    if (showLang1Dropdown) {
+      setShowLang1Dropdown(false);
+      setSearchLang1('');
+      setSelectedLang1Index(-1);
+    } else {
+      setShowLang1Dropdown(true);
+      setShowLang2Dropdown(false);
+      setSearchLang2('');
+      setSelectedLang2Index(-1);
+      // Focus the search input after a short delay
+      setTimeout(() => {
+        lang1SearchRef.current?.focus();
+      }, 100);
+    }
+  };
+
+  const handleLang2DropdownToggle = () => {
+    if (showLang2Dropdown) {
+      setShowLang2Dropdown(false);
+      setSearchLang2('');
+      setSelectedLang2Index(-1);
+    } else {
+      setShowLang2Dropdown(true);
+      setShowLang1Dropdown(false);
+      setSearchLang1('');
+      setSelectedLang1Index(-1);
+      // Focus the search input after a short delay
+      setTimeout(() => {
+        lang2SearchRef.current?.focus();
+      }, 100);
+    }
+  };
+
+  const handleLang1Select = (lang: any) => {
+    setLanguage1(lang.name);
+    setShowLang1Dropdown(false);
+    setSearchLang1('');
+    setSelectedLang1Index(-1);
+  };
+
+  const handleLang2Select = (lang: any) => {
+    setLanguage2(lang.name);
+    setShowLang2Dropdown(false);
+    setSearchLang2('');
+    setSelectedLang2Index(-1);
+  };
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
@@ -250,11 +322,11 @@ const AddWords: React.FC<AddWordsProps> = ({
                 <label className="block text-lg font-semibold text-gray-700 mb-3">
                   First Language
                 </label>
-                                 <div className="relative language-dropdown">
-                   <button
-                     onClick={() => setShowLang1Dropdown(!showLang1Dropdown)}
-                     className="w-full px-6 py-4 bg-white border-2 border-gray-300 rounded-2xl hover:border-blue-400 focus:border-blue-500 transition-all duration-200 text-left flex items-center justify-between shadow-sm"
-                   >
+                <div className="relative language-dropdown" ref={lang1DropdownRef}>
+                  <button
+                    onClick={handleLang1DropdownToggle}
+                    className="w-full px-6 py-4 bg-white border-2 border-gray-300 rounded-2xl hover:border-blue-400 focus:border-blue-500 transition-all duration-200 text-left flex items-center justify-between shadow-sm"
+                  >
                     <div className="flex items-center space-x-3">
                       <span className="text-2xl">{getLanguageFlag(language1)}</span>
                       <span className="font-medium text-gray-800">{getLanguageDisplay(language1)}</span>
@@ -264,31 +336,31 @@ const AddWords: React.FC<AddWordsProps> = ({
                     </svg>
                   </button>
                   
-                                     {showLang1Dropdown && (
-                     <div className="absolute top-full left-0 right-0 mt-2 bg-white border-2 border-gray-300 rounded-2xl shadow-xl z-50 max-h-96 overflow-hidden">
-                       <div className="p-4 border-b border-gray-200 search-input-container">
-                         <input
-                           type="text"
-                           placeholder="Search languages..."
-                           value={searchLang1}
-                           onChange={(e) => setSearchLang1(e.target.value)}
-                           onClick={(e) => e.stopPropagation()}
-                           onMouseDown={(e) => e.stopPropagation()}
-                           onKeyDown={(e) => e.stopPropagation()}
-                           className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                           autoFocus
-                         />
-                       </div>
-                       <div className="max-h-80 overflow-y-auto">
-                        {getFilteredLanguages(searchLang1).map((lang) => (
+                  {showLang1Dropdown && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border-2 border-gray-300 rounded-2xl shadow-xl z-50 max-h-96 overflow-hidden">
+                      <div className="p-4 border-b border-gray-200">
+                        <input
+                          ref={lang1SearchRef}
+                          type="text"
+                          placeholder="Search languages..."
+                          value={searchLang1}
+                          onChange={(e) => {
+                            setSearchLang1(e.target.value);
+                            setSelectedLang1Index(-1);
+                          }}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      <div className="max-h-80 overflow-y-auto">
+                        {getFilteredLanguages(searchLang1).map((lang, index) => (
                           <button
                             key={lang.code}
-                            onClick={() => {
-                              setLanguage1(lang.name);
-                              setShowLang1Dropdown(false);
-                              setSearchLang1('');
-                            }}
-                            className="w-full px-6 py-4 text-left hover:bg-blue-50 transition-colors duration-200 flex items-center space-x-3"
+                            onClick={() => handleLang1Select(lang)}
+                            className={`w-full px-6 py-4 text-left transition-colors duration-200 flex items-center space-x-3 ${
+                              index === selectedLang1Index 
+                                ? 'bg-blue-100 border-l-4 border-blue-500' 
+                                : 'hover:bg-blue-50'
+                            }`}
                           >
                             <span className="text-xl">{getLanguageFlag(lang.name)}</span>
                             <div>
@@ -297,6 +369,11 @@ const AddWords: React.FC<AddWordsProps> = ({
                             </div>
                           </button>
                         ))}
+                        {getFilteredLanguages(searchLang1).length === 0 && (
+                          <div className="px-6 py-4 text-gray-500 text-center">
+                            No languages found matching "{searchLang1}"
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -308,11 +385,11 @@ const AddWords: React.FC<AddWordsProps> = ({
                 <label className="block text-lg font-semibold text-gray-700 mb-3">
                   Second Language
                 </label>
-                                 <div className="relative language-dropdown">
-                   <button
-                     onClick={() => setShowLang2Dropdown(!showLang2Dropdown)}
-                     className="w-full px-6 py-4 bg-white border-2 border-gray-300 rounded-2xl hover:border-blue-400 focus:border-blue-500 transition-all duration-200 text-left flex items-center justify-between shadow-sm"
-                   >
+                <div className="relative language-dropdown" ref={lang2DropdownRef}>
+                  <button
+                    onClick={handleLang2DropdownToggle}
+                    className="w-full px-6 py-4 bg-white border-2 border-gray-300 rounded-2xl hover:border-blue-400 focus:border-blue-500 transition-all duration-200 text-left flex items-center justify-between shadow-sm"
+                  >
                     <div className="flex items-center space-x-3">
                       <span className="text-2xl">{getLanguageFlag(language2)}</span>
                       <span className="font-medium text-gray-800">{getLanguageDisplay(language2)}</span>
@@ -322,31 +399,31 @@ const AddWords: React.FC<AddWordsProps> = ({
                     </svg>
                   </button>
                   
-                                     {showLang2Dropdown && (
-                     <div className="absolute top-full left-0 right-0 mt-2 bg-white border-2 border-gray-300 rounded-2xl shadow-xl z-50 max-h-96 overflow-hidden">
-                       <div className="p-4 border-b border-gray-200 search-input-container">
-                         <input
-                           type="text"
-                           placeholder="Search languages..."
-                           value={searchLang2}
-                           onChange={(e) => setSearchLang2(e.target.value)}
-                           onClick={(e) => e.stopPropagation()}
-                           onMouseDown={(e) => e.stopPropagation()}
-                           onKeyDown={(e) => e.stopPropagation()}
-                           className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                           autoFocus
-                         />
-                       </div>
-                       <div className="max-h-80 overflow-y-auto">
-                        {getFilteredLanguages(searchLang2).map((lang) => (
+                  {showLang2Dropdown && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border-2 border-gray-300 rounded-2xl shadow-xl z-50 max-h-96 overflow-hidden">
+                      <div className="p-4 border-b border-gray-200">
+                        <input
+                          ref={lang2SearchRef}
+                          type="text"
+                          placeholder="Search languages..."
+                          value={searchLang2}
+                          onChange={(e) => {
+                            setSearchLang2(e.target.value);
+                            setSelectedLang2Index(-1);
+                          }}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      <div className="max-h-80 overflow-y-auto">
+                        {getFilteredLanguages(searchLang2).map((lang, index) => (
                           <button
                             key={lang.code}
-                            onClick={() => {
-                              setLanguage2(lang.name);
-                              setShowLang2Dropdown(false);
-                              setSearchLang2('');
-                            }}
-                            className="w-full px-6 py-4 text-left hover:bg-blue-50 transition-colors duration-200 flex items-center space-x-3"
+                            onClick={() => handleLang2Select(lang)}
+                            className={`w-full px-6 py-4 text-left transition-colors duration-200 flex items-center space-x-3 ${
+                              index === selectedLang2Index 
+                                ? 'bg-blue-100 border-l-4 border-blue-500' 
+                                : 'hover:bg-blue-50'
+                            }`}
                           >
                             <span className="text-xl">{getLanguageFlag(lang.name)}</span>
                             <div>
@@ -355,6 +432,11 @@ const AddWords: React.FC<AddWordsProps> = ({
                             </div>
                           </button>
                         ))}
+                        {getFilteredLanguages(searchLang2).length === 0 && (
+                          <div className="px-6 py-4 text-gray-500 text-center">
+                            No languages found matching "{searchLang2}"
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

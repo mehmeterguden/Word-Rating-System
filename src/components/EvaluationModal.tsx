@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { generateAiContent, AiResult } from '../utils/ai';
-import { Word, DifficultyLevel } from '../types';
-import { getLanguageByName, LANGUAGES } from '../utils/languages';
+import { Word, DifficultyLevel, ChatMessage } from '../types';
+import { getLanguageByName, LANGUAGES, getUniqueLanguages } from '../utils/languages';
 import { generateChatReply, generateChatGreeting, generateDefinitionOnly } from '../utils/ai';
 // Chat is now integrated into the AI panel; no separate modal
 
@@ -43,32 +43,67 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
   const [isChatMode, setIsChatMode] = useState(false);
   const [showLangIntro, setShowLangIntro] = useState(false);
   const [introLang, setIntroLang] = useState<string>('English');
-  const [chatMessages, setChatMessages] = useState<Array<{ id: string; role: 'user' | 'assistant'; text: string }>>([
-    { id: 'welcome', role: 'assistant', text: '...' }
-  ]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [localFormatReversed, setLocalFormatReversed] = useState(false);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatMessages.length]);
 
+  // Chat history management
+  const [chatHistory, setChatHistory] = useState<Array<{ role: 'user' | 'assistant'; text: string; timestamp: number }>>([]);
+  
+  // Summarize chat history for context
+  const summarizeChatHistory = (messages: Array<{ role: 'user' | 'assistant'; text: string; timestamp: number }>) => {
+    if (messages.length <= 4) return messages.map(m => `${m.role}: ${m.text}`).join('\n');
+    
+    const recentMessages = messages.slice(-4);
+    const olderMessages = messages.slice(0, -4);
+    
+    if (olderMessages.length === 0) {
+      return recentMessages.map(m => `${m.role}: ${m.text}`).join('\n');
+    }
+    
+    const summary = `Previous conversation summary: ${olderMessages.length} messages exchanged. Recent messages:\n${recentMessages.map(m => `${m.role}: ${m.text}`).join('\n')}`;
+    return summary;
+  };
+
   const handleSendChat = async () => {
     const text = chatInput.trim();
     if (!text) return;
-    const userMsg = { id: `u-${Date.now()}`, role: 'user' as const, text };
+    
+        const userMsg = { id: `u-${Date.now()}`, role: 'user' as const, text, wordId: currentWord?.id };
     setChatMessages(prev => [...prev, userMsg]);
+    
+    // Add to chat history
+    const newHistoryEntry = { role: 'user' as const, text, timestamp: Date.now() };
+    setChatHistory(prev => [...prev, newHistoryEntry]);
+    
     setChatInput('');
+    
     try {
       let chatLang = 'English';
       try { chatLang = localStorage.getItem('word-rating-system-ai-language') || 'English'; } catch {}
+      
+      // Get conversation context
+      const conversationContext = summarizeChatHistory([...chatHistory, newHistoryEntry]);
+      
       const reply = await generateChatReply({
         word1: currentWord?.text1 || '',
         chatLanguageName: chatLang,
         userMessage: text,
         sourceLanguageName,
-        conversationStarted: chatMessages.length > 0
+        targetLanguageName,
+        conversationStarted: chatMessages.length > 0,
+        conversationContext
       });
-      const assistantMsg = { id: `a-${Date.now()}`, role: 'assistant' as const, text: reply };
-      setChatMessages(prev => [...prev, assistantMsg]);
+      
+      const assistantMsg = { id: `a-${Date.now()}`, role: 'assistant' as const, text: reply, wordId: currentWord?.id };
+    setChatMessages(prev => [...prev, assistantMsg]);
+    
+    // Add assistant response to history
+    const assistantHistoryEntry = { role: 'assistant' as const, text: reply, timestamp: Date.now() };
+    setChatHistory(prev => [...prev, assistantHistoryEntry]);
+      
     } catch (e) {
       const fallback = { id: `a-${Date.now()}`, role: 'assistant' as const, text: 'İstek başarısız oldu. Lütfen tekrar deneyin.' };
       setChatMessages(prev => [...prev, fallback]);
@@ -117,20 +152,32 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
   // Reset reveal and AI state when word changes
   useEffect(() => {
     setIsRevealed(false);
-    // Reset AI content to prompt
-    setAiResult(null);
-    setAiMessages([]);
-    // Prepare chat greeting in preferred language
-    (async () => {
-      try {
-        let chatLang = 'English';
-        try { chatLang = localStorage.getItem('word-rating-system-ai-language') || 'English'; } catch {}
-        const greet = await generateChatGreeting({ word1: currentWord?.text1 || '', chatLanguageName: chatLang });
-        setChatMessages([{ id: 'welcome', role: 'assistant', text: greet }]);
-      } catch {
-        setChatMessages([{ id: 'welcome', role: 'assistant', text: `Hello! We can chat here. I can help you with the word "${currentWord?.text1 || ''}". How can I help?` }]);
-      }
-    })();
+    // Only reset AI content if it's a different word
+    if (aiResult && aiResult.wordId !== currentWord?.id) {
+      setAiResult(null);
+      setAiMessages([]);
+      setAiError(null);
+    }
+    // Only reset chat history if it's a different word
+    if (chatMessages.length > 1 && chatMessages[0]?.wordId !== currentWord?.id) {
+      setChatHistory([]);
+      // Prepare chat greeting in preferred language
+      (async () => {
+        try {
+          let chatLang = 'English';
+          try { chatLang = localStorage.getItem('word-rating-system-ai-language') || 'English'; } catch {}
+          const greet = await generateChatGreeting({ 
+            word1: currentWord?.text1 || '', 
+            chatLanguageName: chatLang,
+            sourceLanguageName,
+            targetLanguageName
+          });
+          setChatMessages([{ id: 'welcome', role: 'assistant', text: greet, wordId: currentWord?.id }]);
+        } catch {
+          setChatMessages([{ id: 'welcome', role: 'assistant', text: `Hello! We can chat here. I can help you with the word "${currentWord?.text1 || ''}". How can I help?`, wordId: currentWord?.id }]);
+        }
+      })();
+    }
   }, [currentWord?.id]);
   // Load available speech voices
   useEffect(() => {
@@ -229,7 +276,10 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
         const pieces: string[] = [];
         if (result.definition) pieces.push(result.definition);
         if (result.examples && result.examples.length > 0) {
-          const ex = result.examples.slice(0, 2).map(e => `${e.sentence}${e.translation ? ` — ${e.translation}` : ''}`);
+          const ex = result.examples.slice(0, 2).map(e => {
+            const highlightedSentence = e.sentence.replace(/\[\[w\]\](.*?)\[\[\/w\]\]/g, '<span class="underline decoration-blue-400 decoration-2 underline-offset-2 font-semibold">$1</span>');
+            return `${highlightedSentence}${e.translation ? ` — ${e.translation}` : ''}`;
+          });
           pieces.push(ex.join('\n'));
         }
         if (result.tips && result.tips.length > 0) {
@@ -239,7 +289,7 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
         setAiMessages((prev) => [...prev, { role: 'assistant', text }]);
       } else {
         // Update only the analysis card; DO NOT push into chat stream
-        setAiResult(result);
+        setAiResult({ ...result, wordId: currentWord.id });
         // Pre-fetch alternative definition in the examples language for quick display
         try {
           const def = await generateDefinitionOnly({
@@ -281,21 +331,80 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
       return next;
     });
   };
+
+  const handleOpenAnalysis = () => {
+    if (aiOpen && !isChatMode) {
+      // If Analysis is already open, close it
+      setAiOpen(false);
+      setIsChatMode(false);
+    } else {
+      // Open Analysis mode
+      setIsChatMode(false);
+      setAiOpen(true);
+      
+      // Auto-run AI analysis only if no analysis exists for current word
+      if (!aiResult || aiResult.wordId !== currentWord?.id) {
+        // First-time language onboarding UI
+        try {
+          const asked = localStorage.getItem('word-rating-system-ai-language-asked') === '1';
+          const preferred = localStorage.getItem('word-rating-system-ai-language') || 'English';
+          setIntroLang(preferred);
+          if (!asked) {
+            setShowLangIntro(true);
+          } else {
+            runAi('full');
+          }
+        } catch {
+          runAi('full');
+        }
+      }
+    }
+  };
   
-  const handleSendFollowup = () => {
-    if (!followupText.trim() || aiLoading) return;
-    // No chat mode anymore
-    return;
+  const handleOpenChat = () => {
+    if (aiOpen && isChatMode) {
+      // If Chat is already open, close it
+      setAiOpen(false);
+      setIsChatMode(false);
+    } else {
+      // Open Chat mode
+      setIsChatMode(true);
+      setAiOpen(true);
+      
+      // Create greeting message if chat is empty
+      if (chatMessages.length === 0) {
+        (async () => {
+          try {
+            let chatLang = 'English';
+            try { chatLang = localStorage.getItem('word-rating-system-ai-language') || 'English'; } catch {}
+            const greet = await generateChatGreeting({ 
+              word1: currentWord?.text1 || '', 
+              chatLanguageName: chatLang,
+              sourceLanguageName,
+              targetLanguageName
+            });
+            setChatMessages([{ id: 'welcome', role: 'assistant', text: greet, wordId: currentWord?.id }]);
+          } catch {
+            setChatMessages([{ id: 'welcome', role: 'assistant', text: `Hello! I'm here to help you with anything, especially with **${currentWord?.text1 || ''}**. How can I help you?`, wordId: currentWord?.id }]);
+          }
+        })();
+      }
+    }
   };
 
-  const formatInlineText = useCallback((text: string) => {
+  const formatInlineText = useCallback((text: string, isAssistant: boolean = false) => {
     const escaped = text
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
+    
+    const boldClass = isAssistant ? 'font-semibold text-slate-800' : 'font-semibold text-white';
+    
     return escaped
-      .replace(/\*\*(.+?)\*\*/g, '<strong class="text-slate-900">$1</strong>')
-      .replace(/__(.+?)__/g, '<span class="underline decoration-indigo-400 underline-offset-4">$1</span>');
+      .replace(/\*\*(.+?)\*\*/g, `<strong class="${boldClass}">$1</strong>`)
+      .replace(/__(.+?)__/g, '<span class="underline decoration-indigo-400 underline-offset-4 text-slate-800">$1</span>')
+      .replace(/\[\[w\]\](.*?)\[\[\/w\]\]/g, '<span class="underline decoration-blue-400 decoration-2 underline-offset-2 font-semibold text-slate-800">$1</span>')
+      .replace(/\n/g, '<br />');
   }, []);
 
 
@@ -426,22 +535,29 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
               </button>
 
               {/* AI Assistant - Integrated panel */}
-              <div className="flex p-1 rounded-2xl bg-white/20">
+              <div className="flex items-center gap-1 p-1 rounded-2xl bg-white/20 backdrop-blur-sm">
                 <button
-                  onClick={() => { setIsChatMode(false); handleOpenAi(); }}
-                  className={`px-3 py-2 text-sm rounded-xl transition flex items-center gap-2 ${!isChatMode && aiOpen ? 'bg-white/90 text-indigo-700 shadow' : 'text-white/90 hover:text-white'}`}
-                  title="AI Assistant"
+                  onClick={handleOpenAnalysis}
+                  className={`px-4 py-2 text-sm rounded-xl transition-all duration-200 flex items-center gap-2 ${!isChatMode && aiOpen ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg' : 'text-white/90 hover:text-white hover:bg-white/20'}`}
+                  title="AI Analysis - Get detailed word analysis with examples, synonyms, and tips"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                  AI
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                  <span>Analysis</span>
                 </button>
+                
+                <div className="w-px h-6 bg-white/30"></div>
+                
                 <button
-                  onClick={() => { setIsChatMode(true); setAiOpen(true); }}
-                  className={`px-3 py-2 text-sm rounded-xl transition flex items-center gap-2 ${isChatMode && aiOpen ? 'bg-white/90 text-blue-700 shadow' : 'text-white/90 hover:text-white'}`}
-                  title="Chat"
+                  onClick={handleOpenChat}
+                  className={`px-4 py-2 text-sm rounded-xl transition-all duration-200 flex items-center gap-2 ${isChatMode && aiOpen ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg' : 'text-white/90 hover:text-white hover:bg-white/20'}`}
+                  title="AI Chat - Have a conversation about this word"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h8m-8 4h6" /></svg>
-                  Chat
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  <span>AI Chat</span>
                 </button>
               </div>
             </div>
@@ -817,9 +933,9 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
 
             {/* Right: AI side panel - chat style */}
             {aiOpen && (
-              <aside className="bg-white rounded-3xl shadow-2xl ring-1 ring-slate-200 h-full md:max-h-[calc(90vh-160px)] md:sticky md:top-6 flex flex-col overflow-hidden">
+              <aside className="bg-white rounded-3xl shadow-2xl border border-slate-200 h-full md:max-h-[calc(90vh-160px)] md:sticky md:top-6 flex flex-col overflow-hidden">
                 {/* Header */}
-                <div className="p-3 border-b border-slate-100 flex items-center justify-between bg-white/70 backdrop-blur">
+                <div className="p-3 border-b border-slate-200 flex items-center justify-between bg-white/70 backdrop-blur">
                   <div className="flex items-center gap-2">
                     <div className="text-xs text-slate-500">
                       {localFormatReversed 
@@ -828,35 +944,51 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
                       }
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex p-1 rounded-2xl bg-slate-100/70 ring-1 ring-slate-200 shadow-inner">
-                      <button
-                        onClick={() => { setIsChatMode(false); if (!aiResult && !aiLoading) runAi('full'); }}
-                        className={`px-3 py-1.5 text-xs font-medium rounded-xl transition ${!isChatMode ? 'bg-white text-indigo-700 shadow ring-1 ring-indigo-200' : 'text-slate-600 hover:text-slate-800'}`}
-                        title="AI"
-                      >
-                        AI
-                      </button>
-                      <button
-                        onClick={() => setIsChatMode(true)}
-                        className={`px-3 py-1.5 text-xs font-medium rounded-xl transition ${isChatMode ? 'bg-white text-blue-700 shadow ring-1 ring-blue-200' : 'text-slate-600 hover:text-slate-800'}`}
-                        title="Chat"
-                      >
-                        Chat
-                      </button>
-                    </div>
+                                    <div className="flex items-center gap-2">
                     {!isChatMode && (
-                      <button onClick={() => runAi('full')} disabled={aiLoading} className={`px-3 py-1.5 rounded-xl text-xs font-medium ${aiLoading ? 'bg-slate-200 text-slate-500' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>Refresh</button>
+                      <button 
+                        onClick={() => runAi('full')} 
+                        disabled={aiLoading} 
+                        className={`px-3 py-2 text-xs font-medium rounded-xl transition-all duration-200 flex items-center gap-2 ${aiLoading ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : 'bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-lg hover:shadow-xl hover:scale-105'}`}
+                        title="Refresh AI analysis"
+                      >
+                        <svg className={`w-3.5 h-3.5 ${aiLoading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        <span>{aiLoading ? 'Loading...' : 'Refresh'}</span>
+                      </button>
                     )}
                   </div>
                 </div>
                 {/* Body: chat or analysis */}
                 {isChatMode ? (
-                  <div className="flex-1 flex flex-col">
-                    <div className="flex-1 overflow-auto p-4 space-y-3 bg-gradient-to-br from-white/60 to-slate-50">
+                  <div className="flex-1 flex flex-col bg-gradient-to-br from-slate-50 to-blue-50/30 min-h-0">
+                    {/* Chat Messages Area */}
+                    <div className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100 min-h-0">
                       {chatMessages.map(m => {
                         if (m.role === 'assistant') {
-                          // Parse lightweight "code blocks" for sections; render rest as normal text bubble
+                          // Special design for welcome message
+                          if (m.id === 'welcome') {
+                            return (
+                              <div key={m.id} className="flex justify-start group">
+                                <div className="flex items-start gap-3 max-w-[85%]">
+                                  {/* AI Avatar */}
+                                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-lg flex-shrink-0 mt-1">
+                                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                    </svg>
+                                  </div>
+                                  
+                                  {/* Message Content */}
+                                  <div className="bg-white rounded-2xl px-6 py-4 shadow-lg border border-slate-200/60 backdrop-blur-sm group-hover:shadow-xl transition-all duration-200">
+                                    <div className="text-slate-800 leading-relaxed" dangerouslySetInnerHTML={{ __html: formatInlineText(m.text, true) }} />
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          }
+                          
+                          // Regular assistant messages with improved design
                           const text = m.text;
                           const exBlock = text.match(/```examples[\s\S]*?```/);
                           const tipsBlock = text.match(/```tips[\s\S]*?```/);
@@ -868,46 +1000,99 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
                           const tipItems = tipsBlock ? tipsBlock[0].replace(/```tips|```/g, '').split('\n').map(s => s.trim()).filter(s => s.startsWith('-')).map(s => s.replace(/^\-\s*/, '')) : [];
 
                           return (
-                            <div key={m.id} className="flex justify-start">
-                              <div className="max-w-[80%] space-y-3">
-                                {clean && (
-                                  <div className="px-4 py-3 rounded-2xl bg-white/85 text-slate-800 border border-slate-200 rounded-bl-sm shadow backdrop-blur whitespace-pre-wrap">
-                                    {clean}
-                                  </div>
-                                )}
-                                {exItems.length > 0 && (
-                                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-3">
-                                    <div className="text-xs uppercase tracking-wide text-emerald-700 font-semibold mb-2">Examples</div>
-                                    <ul className="space-y-1">
-                                      {exItems.map((e, i) => <li key={i} className="text-sm">• {e}</li>)}
-                                    </ul>
-                                  </div>
-                                )}
-                                {tipItems.length > 0 && (
-                                  <div className="rounded-2xl border border-indigo-200 bg-indigo-50/60 p-3">
-                                    <div className="text-xs uppercase tracking-wide text-indigo-700 font-semibold mb-2">Tips</div>
-                                    <ul className="space-y-1">
-                                      {tipItems.map((t, i) => <li key={i} className="text-sm">• {t}</li>)}
-                                    </ul>
-                                  </div>
-                                )}
+                            <div key={m.id} className="flex justify-start group">
+                              <div className="flex items-start gap-3 max-w-[85%]">
+                                {/* AI Avatar */}
+                                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-lg flex-shrink-0 mt-1">
+                                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                  </svg>
+                                </div>
+                                
+                                {/* Message Content */}
+                                <div className="space-y-3">
+                                  {clean && (
+                                    <div className="bg-white rounded-2xl px-6 py-4 shadow-lg border border-slate-200/60 backdrop-blur-sm group-hover:shadow-xl transition-all duration-200">
+                                      <div className="text-slate-800 leading-relaxed" dangerouslySetInnerHTML={{ __html: formatInlineText(clean, true) }} />
+                                    </div>
+                                  )}
+                                  {exItems.length > 0 && (
+                                    <div className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-2xl border border-emerald-200 p-4 shadow-md">
+                                      <div className="flex items-center gap-2 mb-3">
+                                        <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center">
+                                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                          </svg>
+                                        </div>
+                                        <div className="text-sm font-semibold text-emerald-700">Examples</div>
+                                      </div>
+                                      <ul className="space-y-2">
+                                        {exItems.map((e, i) => {
+                                          const highlightedExample = e.replace(/\[\[w\]\](.*?)\[\[\/w\]\]/g, '<span class="underline decoration-blue-400 decoration-2 underline-offset-2 font-semibold text-slate-800">$1</span>');
+                                          return (
+                                            <li key={i} className="text-sm text-slate-700 flex items-start gap-2">
+                                              <span className="text-emerald-500 mt-1">•</span>
+                                              <span dangerouslySetInnerHTML={{ __html: highlightedExample }} />
+                                            </li>
+                                          );
+                                        })}
+                                      </ul>
+                                    </div>
+                                  )}
+                                  {tipItems.length > 0 && (
+                                    <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl border border-indigo-200 p-4 shadow-md">
+                                      <div className="flex items-center gap-2 mb-3">
+                                        <div className="w-6 h-6 bg-indigo-500 rounded-full flex items-center justify-center">
+                                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                          </svg>
+                                        </div>
+                                        <div className="text-sm font-semibold text-indigo-700">Tips</div>
+                                      </div>
+                                      <ul className="space-y-2">
+                                        {tipItems.map((t, i) => {
+                                          const highlightedTip = t.replace(/\[\[w\]\](.*?)\[\[\/w\]\]/g, '<span class="underline decoration-blue-400 decoration-2 underline-offset-2 font-semibold text-slate-800">$1</span>');
+                                          return (
+                                            <li key={i} className="text-sm text-slate-700 flex items-start gap-2">
+                                              <span className="text-indigo-500 mt-1">•</span>
+                                              <span dangerouslySetInnerHTML={{ __html: highlightedTip }} />
+                                            </li>
+                                          );
+                                        })}
+                                      </ul>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           );
                         }
 
+                        // User messages with improved design
                         return (
-                          <div key={m.id} className="flex justify-end">
-                            <div className="max-w-[80%] px-4 py-2 rounded-2xl text-sm shadow bg-blue-600/90 text-white rounded-br-sm">
-                              {m.text}
+                          <div key={m.id} className="flex justify-end group">
+                            <div className="flex items-start gap-3 max-w-[85%]">
+                              {/* Message Content */}
+                              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl px-6 py-4 shadow-lg text-white group-hover:shadow-xl transition-all duration-200">
+                                <div dangerouslySetInnerHTML={{ __html: formatInlineText(m.text || '', false) }} />
+                              </div>
+                              
+                              {/* User Avatar */}
+                              <div className="w-10 h-10 bg-gradient-to-br from-slate-600 to-slate-700 rounded-full flex items-center justify-center shadow-lg flex-shrink-0 mt-1">
+                                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                              </div>
                             </div>
                           </div>
                         );
                       })}
                       <div ref={chatEndRef} />
                     </div>
-                    <div className="p-3 border-t border-slate-100 bg-white/70 backdrop-blur">
-                      <div className="flex items-center gap-2">
+                    
+                    {/* Chat Input Area */}
+                    <div className="p-6 border-t border-slate-200/60 bg-white/80 backdrop-blur-sm flex-shrink-0">
+                      <div className="flex items-center gap-3">
                         <input
                           value={chatInput}
                           onChange={(e) => setChatInput(e.target.value)}
@@ -916,16 +1101,21 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
                               e.preventDefault(); 
                               handleSendChat(); 
                             }
-                            // Prevent 1,2,3,4 keys from triggering rating in chat
                             if (['1', '2', '3', '4', '5'].includes(e.key)) {
                               e.stopPropagation();
                             }
                           }}
-                          placeholder="Mesaj yaz..."
-                          className="flex-1 px-4 py-3 rounded-xl border border-slate-200 bg-white/90 shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-100"
+                          placeholder="Type your message..."
+                          className="flex-1 px-6 py-4 rounded-2xl border border-slate-300 bg-white shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 transition-all duration-200 text-slate-800"
                         />
-                        <button onClick={handleSendChat} className="px-4 py-3 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 shadow">
-                          Gönder
+                        <button 
+                          onClick={handleSendChat} 
+                          className="px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-2xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={!chatInput.trim()}
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                          </svg>
                         </button>
                       </div>
                     </div>
@@ -945,7 +1135,7 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
                               onChange={(e) => setIntroLang(e.target.value)}
                               className="w-full appearance-none px-4 py-3 rounded-xl border border-blue-200 bg-white/90 text-slate-800 shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-100"
                             >
-                              {LANGUAGES.map(l => (
+                              {getUniqueLanguages().map(l => (
                                 <option key={l.code} value={l.name}>{l.name}</option>
                               ))}
                             </select>
@@ -1057,14 +1247,14 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
                             <div className="text-slate-800 text-sm leading-relaxed">
                               <div
                                 className="prose prose-sm max-w-none text-slate-800"
-                                dangerouslySetInnerHTML={{ __html: formatInlineText(aiResult.definition || '') }}
+                                dangerouslySetInnerHTML={{ __html: formatInlineText(aiResult.definition || '', true) }}
                               />
                               <div className="mt-3">
                                 <details className="group">
                                   <summary className="cursor-pointer text-xs text-blue-700 hover:underline">Show explanation in {targetLanguageName}</summary>
                                   <div className="mt-2 text-slate-700 text-sm">
                                     {altDefinition ? (
-                                      <div className="mt-1" dangerouslySetInnerHTML={{ __html: formatInlineText(altDefinition) }} />
+                                      <div className="mt-1" dangerouslySetInnerHTML={{ __html: formatInlineText(altDefinition, true) }} />
                                     ) : (
                                       <div className="text-slate-400 text-xs">Loading…</div>
                                     )}
@@ -1084,22 +1274,18 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
                             </div>
                             <ul className="space-y-2">
                               {aiResult.examples.map((ex, idx) => {
-                                const parts = ex.sentence.split(/(\[\[\s*w\s*\]\][\s\S]*?\[\[\s*\/w\s*\]\])/gi);
+                                // Simple and reliable [[w]] tag replacement
+                                const highlightedSentence = ex.sentence.replace(/\[\[w\]\](.*?)\[\[\/w\]\]/g, '<span class="underline decoration-blue-400 decoration-2 underline-offset-2 font-semibold text-slate-800">$1</span>');
+                                
                                 return (
                                   <li key={idx} className="text-sm">
-                                    <div className="text-slate-800">
-                                      {parts.map((p, i) => {
-                                        const m = p.match(/^\[\[\s*w\s*\]\]([\s\S]*?)\[\[\s*\/w\s*\]\]$/i);
-                                        if (m) {
-                                          const cleaned = m[1].replace(/^[\"'“”‚‘’]+|[\"'“”‚‘’]+$/g, '');
-                                          return (
-                                            <span key={i} className="underline decoration-blue-400 decoration-2 underline-offset-2 font-semibold">{cleaned}</span>
-                                          );
-                                        }
-                                        return <span key={i}>{p}</span>;
-                                      })}
-                                    </div>
-                                    {ex.translation && <div className="text-slate-500">{ex.translation}</div>}
+                                    <div className="text-slate-800" dangerouslySetInnerHTML={{ __html: highlightedSentence }} />
+                                    {ex.translation && (
+                                      <div 
+                                        className="text-slate-500" 
+                                        dangerouslySetInnerHTML={{ __html: formatInlineText(ex.translation, true) }} 
+                                      />
+                                    )}
                                   </li>
                                 );
                               })}
@@ -1174,7 +1360,7 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
                             </div>
                             <ul className="list-disc pl-5 space-y-1">
                               {aiResult.tips.map((t, idx) => (
-                                <li key={idx} className="text-sm text-slate-800" dangerouslySetInnerHTML={{ __html: formatInlineText(t) }} />
+                                <li key={idx} className="text-sm text-slate-800" dangerouslySetInnerHTML={{ __html: formatInlineText(t, true) }} />
                               ))}
                             </ul>
                           </div>
