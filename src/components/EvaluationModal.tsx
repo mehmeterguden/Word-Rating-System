@@ -79,11 +79,11 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
   const getRatingButtonColor = (rating: number, isSelected: boolean = false) => {
     if (isSelected) {
       switch (rating) {
-        case 1: return 'bg-gradient-to-br from-green-400 to-emerald-600 text-white shadow-xl scale-110 border-2 border-emerald-300 ring-4 ring-emerald-100';
-        case 2: return 'bg-gradient-to-br from-blue-400 to-indigo-600 text-white shadow-xl scale-110 border-2 border-indigo-300 ring-4 ring-indigo-100';
-        case 3: return 'bg-gradient-to-br from-yellow-400 to-amber-600 text-white shadow-xl scale-110 border-2 border-amber-300 ring-4 ring-amber-100';
-        case 4: return 'bg-gradient-to-br from-orange-400 to-red-500 text-white shadow-xl scale-110 border-2 border-orange-300 ring-4 ring-orange-100';
-        case 5: return 'bg-gradient-to-br from-rose-500 to-red-600 text-white shadow-xl scale-110 border-2 border-rose-300 ring-4 ring-rose-100';
+        case 1: return 'bg-gradient-to-br from-green-400 to-emerald-600 text-white shadow-xl scale-110 ring-4 ring-emerald-100';
+        case 2: return 'bg-gradient-to-br from-blue-400 to-indigo-600 text-white shadow-xl scale-110 ring-4 ring-indigo-100';
+        case 3: return 'bg-gradient-to-br from-yellow-400 to-amber-600 text-white shadow-xl scale-110 ring-4 ring-amber-100';
+        case 4: return 'bg-gradient-to-br from-orange-400 to-red-500 text-white shadow-xl scale-110 ring-4 ring-orange-100';
+        case 5: return 'bg-gradient-to-br from-rose-500 to-red-600 text-white shadow-xl scale-110 ring-4 ring-rose-100';
         default: return 'bg-gradient-to-br from-blue-400 to-blue-600 text-white shadow-lg scale-110';
       }
     } else {

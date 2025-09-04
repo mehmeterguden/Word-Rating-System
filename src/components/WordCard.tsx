@@ -17,11 +17,11 @@ const WordCard: React.FC<WordCardProps> = ({
   const getRatingButtonColor = (rating: number, isSelected: boolean) => {
     if (isSelected) {
       switch (rating) {
-        case 1: return 'bg-gradient-to-br from-green-400 to-emerald-600 text-white shadow-xl scale-110 border-2 border-emerald-300 ring-4 ring-emerald-100';
-        case 2: return 'bg-gradient-to-br from-blue-400 to-indigo-600 text-white shadow-xl scale-110 border-2 border-indigo-300 ring-4 ring-indigo-100';
-        case 3: return 'bg-gradient-to-br from-yellow-400 to-amber-600 text-white shadow-xl scale-110 border-2 border-amber-300 ring-4 ring-amber-100';
-        case 4: return 'bg-gradient-to-br from-orange-400 to-red-500 text-white shadow-xl scale-110 border-2 border-orange-300 ring-4 ring-orange-100';
-        case 5: return 'bg-gradient-to-br from-rose-500 to-red-600 text-white shadow-xl scale-110 border-2 border-rose-300 ring-4 ring-rose-100';
+        case 1: return 'bg-gradient-to-br from-green-400 to-emerald-600 text-white shadow-xl scale-110 ring-4 ring-emerald-100';
+        case 2: return 'bg-gradient-to-br from-blue-400 to-indigo-600 text-white shadow-xl scale-110 ring-4 ring-indigo-100';
+        case 3: return 'bg-gradient-to-br from-yellow-400 to-amber-600 text-white shadow-xl scale-110 ring-4 ring-amber-100';
+        case 4: return 'bg-gradient-to-br from-orange-400 to-red-500 text-white shadow-xl scale-110 ring-4 ring-orange-100';
+        case 5: return 'bg-gradient-to-br from-rose-500 to-red-600 text-white shadow-xl scale-110 ring-4 ring-rose-100';
         default: return 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg scale-110 border-2 border-blue-400';
       }
     } else {
@@ -60,9 +60,6 @@ const WordCard: React.FC<WordCardProps> = ({
 
   return (
     <div className="bg-white/95 backdrop-blur-sm rounded-3xl p-6 hover:bg-white transition-all duration-300 shadow-xl hover:shadow-2xl border border-slate-100 group relative overflow-hidden">
-      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-        <div className="absolute -top-16 -right-16 w-48 h-48 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full blur-2xl"></div>
-      </div>
       <div className="flex items-center justify-between">
         {/* Left side - Word text and status */}
         <div className="flex items-center space-x-4 min-w-0 flex-1">
