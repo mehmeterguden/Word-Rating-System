@@ -79,21 +79,21 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
   const getRatingButtonColor = (rating: number, isSelected: boolean = false) => {
     if (isSelected) {
       switch (rating) {
-        case 1: return 'bg-gradient-to-br from-green-400 to-green-600 text-white shadow-lg scale-110';
-        case 2: return 'bg-gradient-to-br from-blue-400 to-blue-600 text-white shadow-lg scale-110';
-        case 3: return 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-white shadow-lg scale-110';
-        case 4: return 'bg-gradient-to-br from-orange-400 to-orange-600 text-white shadow-lg scale-110';
-        case 5: return 'bg-gradient-to-br from-red-400 to-red-600 text-white shadow-lg scale-110';
+        case 1: return 'bg-gradient-to-br from-green-400 to-emerald-600 text-white shadow-xl scale-110 border-2 border-emerald-300 ring-4 ring-emerald-100';
+        case 2: return 'bg-gradient-to-br from-blue-400 to-indigo-600 text-white shadow-xl scale-110 border-2 border-indigo-300 ring-4 ring-indigo-100';
+        case 3: return 'bg-gradient-to-br from-yellow-400 to-amber-600 text-white shadow-xl scale-110 border-2 border-amber-300 ring-4 ring-amber-100';
+        case 4: return 'bg-gradient-to-br from-orange-400 to-red-500 text-white shadow-xl scale-110 border-2 border-orange-300 ring-4 ring-orange-100';
+        case 5: return 'bg-gradient-to-br from-rose-500 to-red-600 text-white shadow-xl scale-110 border-2 border-rose-300 ring-4 ring-rose-100';
         default: return 'bg-gradient-to-br from-blue-400 to-blue-600 text-white shadow-lg scale-110';
       }
     } else {
       switch (rating) {
-        case 1: return 'bg-green-100 text-green-700 hover:bg-green-200 hover:scale-105';
-        case 2: return 'bg-blue-100 text-blue-700 hover:bg-blue-200 hover:scale-105';
-        case 3: return 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200 hover:scale-105';
-        case 4: return 'bg-orange-100 text-orange-700 hover:bg-orange-200 hover:scale-105';
-        case 5: return 'bg-red-100 text-red-700 hover:bg-red-200 hover:scale-105';
-        default: return 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:scale-105';
+        case 1: return 'bg-gradient-to-br from-green-50 to-emerald-50 text-emerald-700 hover:from-green-100 hover:to-emerald-100 hover:scale-105 border-2 border-emerald-200 hover:border-emerald-300 shadow';
+        case 2: return 'bg-gradient-to-br from-blue-50 to-indigo-50 text-indigo-700 hover:from-blue-100 hover:to-indigo-100 hover:scale-105 border-2 border-indigo-200 hover:border-indigo-300 shadow';
+        case 3: return 'bg-gradient-to-br from-yellow-50 to-amber-50 text-amber-700 hover:from-yellow-100 hover:to-amber-100 hover:scale-105 border-2 border-amber-200 hover:border-amber-300 shadow';
+        case 4: return 'bg-gradient-to-br from-orange-50 to-red-50 text-orange-700 hover:from-orange-100 hover:to-red-100 hover:scale-105 border-2 border-orange-200 hover:border-orange-300 shadow';
+        case 5: return 'bg-gradient-to-br from-rose-50 to-red-50 text-rose-700 hover:from-rose-100 hover:to-red-100 hover:scale-105 border-2 border-rose-200 hover:border-rose-300 shadow';
+        default: return 'bg-gradient-to-br from-gray-50 to-slate-50 text-gray-700 hover:from-gray-100 hover:to-slate-100 hover:scale-105 border-2 border-gray-200 hover:border-gray-300 shadow';
       }
     }
   };
@@ -223,7 +223,7 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
                   <div className="flex justify-center items-center">
                     <button
                       onClick={() => setIsRevealed(true)}
-                      className="group relative min-h-[80px] w-80 flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-2 border-blue-200 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 active:scale-95 overflow-hidden"
+                      className="group relative min-h-[80px] w-80 flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border-2 border-blue-200 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 active:scale-95 overflow-hidden"
                     >
                       {/* Background pattern */}
                       <div className="absolute inset-0 bg-gradient-to-br from-blue-100/20 via-transparent to-purple-100/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -298,7 +298,7 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
                   <div className="relative">
                     <button
                       onClick={() => handleRate(rating as DifficultyLevel)}
-                      className={`w-16 h-16 rounded-2xl text-xl font-bold transition-all duration-300 transform hover:scale-110 active:scale-95 shadow-lg hover:shadow-xl ${
+                      className={`w-16 h-16 rounded-2xl text-xl font-extrabold transition-all duration-300 transform hover:scale-110 active:scale-95 shadow-xl hover:shadow-2xl ${
                         clickedRating === rating ? 'animate-bounce shadow-2xl' : ''
                       } ${
                         clickedRating === rating 
