@@ -103,7 +103,7 @@ function App() {
     startEvaluation(selectedWords);
   };
 
-  const handleAddWords = (wordPairs: { text1: string; text2: string }[]) => {
+  const handleAddWords = (wordPairs: { text1: string; text2: string; language1Name: string; language2Name: string }[]) => {
     console.log('🏠 App: handleAddWords called with:', wordPairs);
     console.log('🏠 App: Current words before adding:', words);
     console.log('🏠 App: Current words count:', words.length);
@@ -187,6 +187,8 @@ function App() {
           totalWords={getTotalEvaluationWords()}
           progressPercentage={progressPercentage()}
           currentIndex={evaluationIndex}
+          targetLanguageName={getCurrentWord()?.language1Name || defaultLanguage1}
+          sourceLanguageName={getCurrentWord()?.language2Name || defaultLanguage2}
           onRate={(difficulty) => {
             if (getCurrentWord()) {
               const currentWord = getCurrentWord()!;

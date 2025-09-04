@@ -6,13 +6,17 @@ interface WordCardProps {
   onUpdateDifficulty: (id: number, difficulty: DifficultyLevel) => void;
   onRemoveWord: (id: number) => void;
   onResetEvaluation: (id: number) => void;
+  fallbackLearningLanguageName?: string; // Used if word.language1Name is missing
+  fallbackKnownLanguageName?: string; // Used if word.language2Name is missing
 }
 
 const WordCard: React.FC<WordCardProps> = ({
   word,
   onUpdateDifficulty,
   onRemoveWord,
-  onResetEvaluation
+  onResetEvaluation,
+  fallbackLearningLanguageName,
+  fallbackKnownLanguageName
 }) => {
   const getRatingButtonColor = (rating: number, isSelected: boolean) => {
     if (isSelected) {
@@ -68,6 +72,11 @@ const WordCard: React.FC<WordCardProps> = ({
               <span className={`text-xl font-semibold truncate ${word.isEvaluated ? 'text-gray-900' : 'text-gray-700'}`}>
                 {word.text1}
               </span>
+              {((word.language1Name || fallbackLearningLanguageName) && (word.language2Name || fallbackKnownLanguageName)) && (
+                <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200 whitespace-nowrap flex-shrink-0">
+                  {(word.language1Name || fallbackLearningLanguageName || '').toString()} → {(word.language2Name || fallbackKnownLanguageName || '').toString()}
+                </span>
+              )}
               {!word.isEvaluated && (
                 <span className="px-3 py-1 text-xs font-medium bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-full flex-shrink-0 shadow-md animate-pulse">
                   Pending

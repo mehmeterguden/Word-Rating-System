@@ -314,6 +314,8 @@ const Home: React.FC<HomeProps> = ({
                     onUpdateDifficulty={onUpdateDifficulty}
                     onRemoveWord={onRemoveWord}
                     onResetEvaluation={(id) => onUpdateDifficulty(id, 0)}
+                    fallbackLearningLanguageName={word.language1Name}
+                    fallbackKnownLanguageName={word.language2Name}
                   />
                 ))}
               </div>

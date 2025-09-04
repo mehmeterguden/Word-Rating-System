@@ -135,12 +135,14 @@ export const useWords = (activeSetId?: string | null) => {
     });
   }, []);
 
-  const addBilingualWords = useCallback((wordPairs: { text1: string; text2: string }[], setId: string) => {
+  const addBilingualWords = useCallback((wordPairs: { text1: string; text2: string; language1Name?: string; language2Name?: string }[], setId: string) => {
     console.log('➕ useWords: Adding bilingual words to set:', setId, wordPairs);
     const newWords: Word[] = wordPairs.map((pair, index) => ({
       id: Date.now() + index,
       text1: pair.text1.trim(),
       text2: pair.text2.trim(),
+      language1Name: pair.language1Name,
+      language2Name: pair.language2Name,
       difficulty: 0,
       isEvaluated: false,
       createdAt: new Date(),

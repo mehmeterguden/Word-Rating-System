@@ -6,6 +6,8 @@ export interface Word {
   id: number;
   text1: string; // First language (e.g., English)
   text2: string; // Second language (e.g., Turkish)
+  language1Name?: string; // Learning language name for text1
+  language2Name?: string; // Known language name for text2
   difficulty: DifficultyLevel;
   isEvaluated: boolean;
   createdAt: Date;

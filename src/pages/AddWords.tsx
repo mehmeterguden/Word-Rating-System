@@ -3,7 +3,7 @@ import { WordSet } from '../types';
 import { LANGUAGES, getLanguageByName } from '../utils/languages';
 
 interface AddWordsProps {
-  onAddWords: (wordPairs: { text1: string; text2: string }[]) => void;
+  onAddWords: (wordPairs: { text1: string; text2: string; language1Name: string; language2Name: string }[]) => void;
   activeSetId: string | null;
   wordSets: any[];
   defaultLanguage1: string;
@@ -81,7 +81,12 @@ const AddWords: React.FC<AddWordsProps> = ({
     if (inputText.trim() && previewWords.length > 0) {
       const validWords = previewWords.filter(word => word.text1 && word.text2);
       if (validWords.length > 0) {
-        onAddWords(validWords);
+        onAddWords(validWords.map(w => ({
+          text1: w.text1,
+          text2: w.text2,
+          language1Name: language1,
+          language2Name: language2
+        })));
         setInputText('');
         setPreviewWords([]);
         setShowPreview(false);

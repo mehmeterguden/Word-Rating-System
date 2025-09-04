@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { generateAiContent, AiResult } from '../utils/ai';
 import { Word, DifficultyLevel } from '../types';
+import { getLanguageByName } from '../utils/languages';
 
 interface EvaluationModalProps {
   currentWord: Word | null;
   totalWords: number;
   progressPercentage: number;
   currentIndex: number;
+  sourceLanguageName: string;
+  targetLanguageName: string;
   onRate: (difficulty: DifficultyLevel) => void;
   onClose: () => void;
   onPrevious: () => void;
@@ -17,6 +21,8 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
   totalWords,
   progressPercentage,
   currentIndex,
+  sourceLanguageName,
+  targetLanguageName,
   onRate,
   onClose,
   onPrevious,
@@ -25,11 +31,88 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
   const [clickedRating, setClickedRating] = useState<number | null>(null);
   const [isRevealed, setIsRevealed] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiResult, setAiResult] = useState<AiResult | null>(null);
+  const [followupText, setFollowupText] = useState('');
+  const [aiMessages, setAiMessages] = useState<Array<{ role: 'user' | 'assistant'; text?: string; result?: AiResult }>>([]);
+  const [aiChatOpen, setAiChatOpen] = useState(false);
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [selectedEnVoiceName, setSelectedEnVoiceName] = useState<string | null>(() => {
+    try { return localStorage.getItem('tts-en-voice') || null; } catch { return null; }
+  });
+  const [showEnMenuFor, setShowEnMenuFor] = useState<'source' | 'target' | null>(null);
+  
 
-  // Reset reveal state when word changes
+  // Resolve language code from display name and speak via browser TTS
+  const resolveLangCode = (languageName?: string): string | undefined => {
+    if (!languageName) return undefined;
+    const match = getLanguageByName(languageName);
+    return match?.code;
+  };
+
+  const speakWord = (text: string, languageName?: string) => {
+    try {
+      const synth = (window as any).speechSynthesis as SpeechSynthesis | undefined;
+      if (!synth) return;
+      synth.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      const langCode = resolveLangCode(languageName) || 'en';
+      utterance.lang = langCode === 'en' ? 'en-US' : langCode;
+      // Choose voice: saved per-language preference > lang match > fallback
+      const voices = (availableVoices.length ? availableVoices : (synth.getVoices?.() || []));
+      const voiceKey = `tts-voice-${langCode}`;
+      let preferredName: string | null = null;
+      try { preferredName = localStorage.getItem(voiceKey); } catch {}
+      let chosen: SpeechSynthesisVoice | undefined = preferredName ? voices.find(v => v.name === preferredName) : undefined;
+      if (!chosen) {
+        chosen = voices.find(v => v.lang?.toLowerCase().startsWith(langCode));
+      }
+      if (!chosen) {
+        chosen = voices[0];
+      }
+      if (chosen) utterance.voice = chosen;
+      utterance.rate = 0.95;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+      synth.speak(utterance);
+    } catch {
+      // No-op on unsupported environments
+    }
+  };
+  const getVoiceKey = (code: string) => `tts-voice-${code}`;
+
+  // Reset reveal and AI state when word changes
   useEffect(() => {
     setIsRevealed(false);
+    // Reset AI content to prompt
+    setAiResult(null);
+    setAiMessages([]);
+    setAiChatOpen(false);
   }, [currentWord?.id]);
+  // Load available speech voices
+  useEffect(() => {
+    const synth = (window as any).speechSynthesis as SpeechSynthesis | undefined;
+    if (!synth) return;
+    const loadVoices = () => setAvailableVoices(synth.getVoices?.() || []);
+    loadVoices();
+    synth.addEventListener?.('voiceschanged', loadVoices);
+    return () => synth.removeEventListener?.('voiceschanged', loadVoices);
+  }, []);
+
+
+  useEffect(() => {
+    const synth = (window as any).speechSynthesis as SpeechSynthesis | undefined;
+    if (!synth) return;
+    const loadVoices = () => {
+      const v = synth.getVoices?.() || [];
+      setAvailableVoices(v);
+    };
+    loadVoices();
+    synth.addEventListener?.('voiceschanged', loadVoices);
+    return () => synth.removeEventListener?.('voiceschanged', loadVoices);
+  }, []);
 
   // Keyboard event handlers
   useEffect(() => {
@@ -76,6 +159,60 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
     }, 800);
   };
 
+  const runAi = async (mode: 'explain' | 'examples' | 'synonyms' | 'followup' | 'full') => {
+    if (!currentWord) return;
+    try {
+      setAiError(null);
+      setAiLoading(true);
+      const result = await generateAiContent({
+        word: currentWord.text1,
+        sourceLanguageName,
+        targetLanguageName,
+        mode,
+        userQuestion: mode === 'followup' ? followupText : undefined
+      });
+      setAiResult(result);
+      setAiOpen(true);
+      if (mode === 'followup') {
+        // Append assistant message for follow-up
+        setAiMessages((prev) => [...prev, { role: 'assistant', result }]);
+      } else {
+        // Initial or other modes: show as assistant message
+        if (aiMessages.length === 0) {
+          setAiMessages([{ role: 'assistant', result }]);
+        } else {
+          setAiMessages((prev) => [...prev, { role: 'assistant', result }]);
+        }
+      }
+    } catch (err: any) {
+      setAiError(err?.message || 'AI request failed');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleOpenAi = () => {
+    setAiOpen((v) => {
+      const next = !v;
+      if (next) {
+        // Auto-load full content on first open
+        if (aiMessages.length === 0 && !aiLoading) {
+          runAi('full');
+        }
+        setAiChatOpen(false);
+      }
+      return next;
+    });
+  };
+
+  const handleSendFollowup = () => {
+    if (!followupText.trim() || aiLoading) return;
+    // Push user message then run follow-up
+    setAiMessages((prev) => [...prev, { role: 'user', text: followupText.trim() }]);
+    runAi('followup');
+    setFollowupText('');
+  };
+
   const getRatingButtonColor = (rating: number, isSelected: boolean = false) => {
     if (isSelected) {
       switch (rating) {
@@ -120,6 +257,12 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
     }
   };
 
+  const englishVoices = availableVoices.filter(v => v.lang?.toLowerCase().startsWith('en'));
+  const saveSelectedEnVoice = (name: string) => {
+    setSelectedEnVoiceName(name);
+    try { localStorage.setItem('tts-en-voice', name); } catch {}
+  };
+
   if (!currentWord) return null;
 
   return (
@@ -128,7 +271,7 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+        className={`bg-white rounded-3xl shadow-2xl w-full max-h-[90vh] overflow-hidden transition-[max-width] duration-300 ease-out ${aiOpen ? 'max-w-7xl' : 'max-w-4xl'}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -184,20 +327,119 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
                   </div>
                 )}
               </div>
+
+              {/* AI Assistant - Integrated panel */}
+              <button
+                onClick={handleOpenAi}
+                className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl shadow transition-all duration-200 flex items-center gap-2"
+                title="AI Assistant"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                AI
+              </button>
             </div>
           </div>
         </div>
 
-        {/* Flashcard */}
-        <div className="p-8">
+        {/* Content grid: left evaluation, right AI side panel */}
+        <div className="p-6 md:p-8">
+          <div className={`grid gap-6 ${aiOpen ? 'md:grid-cols-[minmax(0,1fr)_420px]' : 'md:grid-cols-1'}`}>
+            {/* Left: evaluation flow */}
+            <div>
           <div className="mb-8">
             {/* Flashcard Container */}
             <div className="relative bg-gradient-to-br from-slate-50 to-gray-100 rounded-3xl p-8 shadow-xl border border-gray-200">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <span className="px-3 py-1 rounded-full text-xs font-medium bg-white border border-slate-200 text-slate-700 shadow-sm flex items-center gap-1">
+                  {targetLanguageName}
+                  {(() => {
+                    const code = resolveLangCode(targetLanguageName);
+                    const list = availableVoices.filter(v => v.lang?.toLowerCase().startsWith(code || ''));
+                    const current = code ? (localStorage.getItem(getVoiceKey(code)) || '') : '';
+                    if (!code || list.length === 0) return null;
+                    return (
+                    <span className="relative">
+                      <button
+                        onClick={() => setShowEnMenuFor(showEnMenuFor === 'target' ? null : 'target')}
+                        className="-mr-1 p-1 rounded-lg hover:bg-slate-100 text-slate-600"
+                        title="Choose voice"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/></svg>
+                      </button>
+                      {showEnMenuFor === 'target' && (
+                        <div className="absolute left-0 mt-2 w-56 max-h-60 overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg z-[9999]">
+                          {list.map(v => (
+                            <button
+                              key={v.name}
+                              onClick={() => { try{ localStorage.setItem(getVoiceKey(code), v.name); }catch{}; setShowEnMenuFor(null); }}
+                              className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-50 ${current === v.name ? 'bg-blue-50 text-blue-700' : 'text-slate-700'}`}
+                            >
+                              {v.name} <span className="text-xs text-slate-500">({v.lang})</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </span>
+                    );
+                  })()}
+                </span>
+                <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+                <span className="px-3 py-1 rounded-full text-xs font-medium bg-white border border-slate-200 text-slate-700 shadow-sm flex items-center gap-1">
+                  {sourceLanguageName}
+                  {(() => {
+                    const code = resolveLangCode(sourceLanguageName);
+                    const list = availableVoices.filter(v => v.lang?.toLowerCase().startsWith(code || ''));
+                    const current = code ? (localStorage.getItem(getVoiceKey(code)) || '') : '';
+                    if (!code || list.length === 0) return null;
+                    return (
+                    <span className="relative">
+                      <button
+                        onClick={() => setShowEnMenuFor(showEnMenuFor === 'source' ? null : 'source')}
+                        className="-mr-1 p-1 rounded-lg hover:bg-slate-100 text-slate-600"
+                        title="Choose voice"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/></svg>
+                      </button>
+                      {showEnMenuFor === 'source' && (
+                        <div className="absolute left-0 mt-2 w-56 max-h-60 overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg z-[9999]">
+                          {list.map(v => (
+                            <button
+                              key={v.name}
+                              onClick={() => { try{ localStorage.setItem(getVoiceKey(code), v.name); }catch{}; setShowEnMenuFor(null); }}
+                              className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-50 ${current === v.name ? 'bg-blue-50 text-blue-700' : 'text-slate-700'}`}
+                            >
+                              {v.name} <span className="text-xs text-slate-500">({v.lang})</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </span>
+                    );
+                  })()}
+                </span>
+              </div>
               {/* First Language (Always Visible) */}
               <div className="text-center mb-6">
+                    <div className="flex items-center justify-center gap-3">
                 <h3 className="text-3xl font-bold text-gray-800 mb-2">
                   {currentWord.text1}
                 </h3>
+                      <button
+                        onClick={() => speakWord(currentWord.text1, targetLanguageName)}
+                        className="mb-2 p-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 shadow-sm hover:shadow transition"
+                        title={`Kelimeyi dinle (${targetLanguageName})`}
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5l-4 4H4v6h3l4 4V5z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.54 8.46a5 5 0 010 7.07M17.95 6.05a8 8 0 010 11.31" />
+                        </svg>
+                      </button>
+                    </div>
+                    
               </div>
               
               {/* Divider */}
@@ -215,9 +457,22 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
               <div className="text-center">
                 {isRevealed ? (
                   <div className="space-y-2">
-                    <h3 className="text-3xl font-bold text-gray-800">
-                      {currentWord.text2}
-                    </h3>
+                    <div className="flex items-center justify-center gap-3">
+                      <h3 className="text-3xl font-bold text-gray-800">
+                        {currentWord.text2}
+                      </h3>
+                      <button
+                        onClick={() => speakWord(currentWord.text2, sourceLanguageName)}
+                        className="p-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 shadow-sm hover:shadow transition"
+                        title={`Kelimeyi dinle (${sourceLanguageName})`}
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5l-4 4H4v6h3l4 4V5z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.54 8.46a5 5 0 010 7.07M17.95 6.05a8 8 0 010 11.31" />
+                        </svg>
+                      </button>
+                    </div>
+                    
                   </div>
                 ) : (
                   <div className="flex justify-center items-center">
@@ -397,6 +652,211 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
                 </svg>
               </div>
             </button>
+              </div>
+            </div>
+
+            {/* Right: AI side panel - chat style */}
+            {aiOpen && (
+              <aside className="bg-white rounded-3xl shadow-2xl ring-1 ring-slate-200 h-full md:max-h-[calc(90vh-160px)] md:sticky md:top-6 flex flex-col overflow-hidden">
+                {/* Header */}
+                <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                  <div>
+                    <div className="text-base font-semibold text-slate-800">AI Assistant</div>
+                    <div className="text-xs text-slate-500">{sourceLanguageName} → {targetLanguageName} · {currentWord?.text1}{currentWord?.text2 ? ` / ${currentWord?.text2}` : ''}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => runAi('full')} disabled={aiLoading} className={`px-3 py-1.5 rounded-xl text-xs font-medium ${aiLoading ? 'bg-slate-200 text-slate-500' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>Yenile</button>
+                    <button onClick={() => setAiChatOpen((v) => !v)} className={`px-3 py-1.5 rounded-xl text-xs font-medium ${aiChatOpen ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'}`}>Chat</button>
+                  </div>
+                </div>
+                {/* Body Scroll */}
+                <div className="flex-1 overflow-auto p-4 space-y-4">
+                  {!aiResult && !aiLoading && !aiError && (
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm text-slate-700 flex items-center justify-between">
+                      <span>Analyze this word with AI?</span>
+                      <div className="flex gap-2">
+                        <button onClick={() => runAi('full')} className="px-3 py-1.5 rounded-xl bg-blue-600 text-white text-xs hover:bg-blue-700">Analyze</button>
+                        <button onClick={() => setAiOpen(false)} className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 text-xs hover:bg-slate-200">Not now</button>
+                      </div>
+                    </div>
+                  )}
+                  {/* Loading skeleton */}
+                  {aiLoading && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-slate-500 text-sm">
+                        <span className="relative inline-flex h-3 w-3">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+                        </span>
+                        AI is thinking...
+                      </div>
+                      <div className="animate-pulse space-y-2">
+                        <div className="h-4 w-32 bg-slate-200 rounded"></div>
+                        <div className="h-3 w-4/5 bg-slate-200 rounded"></div>
+                        <div className="h-3 w-3/5 bg-slate-200 rounded"></div>
+                        <div className="h-4 w-24 bg-slate-200 rounded mt-4"></div>
+                        <div className="h-3 w-11/12 bg-slate-200 rounded"></div>
+                        <div className="h-3 w-10/12 bg-slate-200 rounded"></div>
+                        <div className="h-3 w-9/12 bg-slate-200 rounded"></div>
+                      </div>
+                    </div>
+                  )}
+                  {/* Error */}
+                  {aiError && !aiLoading && (
+                    <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-2xl shadow border border-red-200">
+                      {aiError}
+                    </div>
+                  )}
+                  {/* AI Card */}
+                  {!aiLoading && !aiError && aiResult && (
+                    <div className="space-y-6">
+                      {/* Definition */}
+                      {(aiResult.definition || aiResult.partOfSpeech) && (
+                        <div className="rounded-2xl border border-slate-200 p-4 bg-gradient-to-br from-slate-50 to-white shadow-sm">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                              </div>
+                              <div className="text-sm font-semibold text-slate-800">Definition</div>
+                            </div>
+                            {aiResult.partOfSpeech && (<span className="px-2 py-1 rounded-full bg-slate-100 text-slate-600 text-xs">{aiResult.partOfSpeech}</span>)}
+                          </div>
+                          {aiResult.definition && (
+                            <div className="text-slate-800 text-sm leading-relaxed">{aiResult.definition}</div>
+                          )}
+                        </div>
+                      )}
+                      {/* Examples */}
+                      {aiResult.examples && aiResult.examples.length > 0 && (
+                        <div className="rounded-2xl border border-emerald-200 p-4 bg-gradient-to-br from-emerald-50 to-white shadow-sm">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </div>
+                            <div className="text-sm font-semibold text-emerald-700">Examples</div>
+                          </div>
+                          <ul className="space-y-2">
+                            {aiResult.examples.map((ex, idx) => (
+                              <li key={idx} className="text-sm">
+                                <div className="text-slate-800">{ex.sentence}</div>
+                                {ex.translation && <div className="text-slate-500">{ex.translation}</div>}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {/* Synonyms */}
+                      {aiResult.synonyms && aiResult.synonyms.length > 0 && (
+                        <div className="rounded-2xl border border-amber-200 p-4 bg-gradient-to-br from-amber-50 to-white shadow-sm">
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                            </div>
+                            <div className="text-sm font-semibold text-amber-700">Synonyms</div>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {aiResult.synonyms.map((s, idx) => (
+                              <span key={idx} className="px-2.5 py-1.5 rounded-full bg-amber-100 text-amber-800 text-xs font-medium">{s}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {/* Tips */}
+                      {aiResult.tips && aiResult.tips.length > 0 && (
+                        <div className="rounded-2xl border border-indigo-200 p-4 bg-gradient-to-br from-indigo-50 to-white shadow-sm">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3"/></svg>
+                            </div>
+                            <div className="text-sm font-semibold text-indigo-700">Tips</div>
+                          </div>
+                          <ul className="list-disc pl-5 space-y-1">
+                            {aiResult.tips.map((t, idx) => (
+                              <li key={idx} className="text-sm text-slate-800">{t}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {/* Empty state */}
+                  {!aiLoading && !aiError && !aiResult && (
+                    <div className="text-xs text-slate-500">Veri yok. "Yenile" ile tekrar deneyin.</div>
+                  )}
+                  {/* Chat area toggle */}
+                  {aiChatOpen && (
+                    <div className="pt-2 border-t border-slate-100">
+                      <div className="text-xs font-semibold text-slate-500 mb-2">Chat</div>
+                      {/* Chat messages */}
+                      <div className="space-y-3">
+                        {aiMessages.map((m, idx) => (
+                          <div key={idx} className={`flex ${m.role === 'assistant' ? 'justify-start' : 'justify-end'}`}>
+                            {m.role === 'user' ? (
+                              <div className="max-w-[80%] bg-blue-600 text-white text-sm px-4 py-3 rounded-2xl rounded-br-sm shadow">{m.text}</div>
+                            ) : (
+                              <div className="max-w-[85%] bg-slate-50 text-slate-800 text-sm px-4 py-3 rounded-2xl rounded-bl-sm shadow border border-slate-200">
+                                {m.result ? (
+                                  <div className="space-y-2">
+                                    {m.result.definition && <div>{m.result.definition}</div>}
+                                  </div>
+                                ) : '...'}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        {aiLoading && (
+                          <div className="flex justify-start">
+                            <div className="max-w-[70%] bg-slate-50 text-slate-600 text-sm px-4 py-3 rounded-2xl rounded-bl-sm shadow border border-slate-200">
+                              <div className="flex items-center gap-2">
+                                <span>AI yazıyor</span>
+                                <span className="flex gap-1">
+                                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.2s]"></span>
+                                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0s]"></span>
+                                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0.2s]"></span>
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {/* Composer (visible only when chat open) */}
+                {aiChatOpen && (
+                  <div className="p-3 border-t border-slate-100 bg-white">
+                    <div className="flex items-end gap-2">
+                      <div className="flex-1 relative">
+                        <textarea
+                          value={followupText}
+                          onChange={(e) => setFollowupText(e.target.value)}
+                          rows={1}
+                          placeholder="Kısa bir soru yaz (kullanım, kalıplar, karışıklıklar...)"
+                          className="w-full resize-none rounded-2xl border border-slate-200 px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-4 focus:ring-blue-100"
+                          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendFollowup(); } }}
+                        />
+                        {followupText && (
+                          <button onClick={() => setFollowupText('')} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-slate-100">
+                            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                      <button
+                        onClick={handleSendFollowup}
+                        disabled={!followupText.trim() || aiLoading}
+                        className={`px-4 py-2 rounded-2xl text-white text-sm font-medium ${followupText.trim() && !aiLoading ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-300 cursor-not-allowed'}`}
+                        title="Gönder"
+                      >
+                        Gönder
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </aside>
+            )}
           </div>
         </div>
       </div>
