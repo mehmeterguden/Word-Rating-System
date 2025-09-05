@@ -359,12 +359,12 @@ export async function generateChatGreeting(params: {
   // Determine the language of word1 (the language being learned)
   const word1Language = targetLanguageName || sourceLanguageName || 'the target language';
   const presets: Record<string, string> = {
-    English: `Hi! I'm here to help you with anything, especially with **${word1}**. How can I help you?`,
-    Turkish: `Merhaba! Burada her konuda yardım ederim, özellikle **${word1}** ile ilgili. Nasıl yardımcı olabilirim?`,
-    Russian: `Привет! Я здесь, чтобы помочь с чем угодно, особенно с **${word1}**. Как я могу помочь?`,
-    Spanish: `¡Hola! Estoy aquí para ayudarte con cualquier cosa, especialmente con **${word1}**. ¿Cómo puedo ayudarte?`,
-    French: `Salut ! Je suis là pour t'aider avec tout, surtout avec **${word1}**. Comment puis-je t'aider ?`,
-    German: `Hallo! Ich bin hier, um bei allem zu helfen, besonders mit **${word1}**. Wie kann ich dir helfen?`
+    English: `Hi! Let’s work on **${word1}** together. What would you like to try first?`,
+    Turkish: `Merhaba! **${word1}** üzerine birlikte çalışalım. Önce neye bakalım?`,
+    Russian: `Привет! Давай поработаем над **${word1}**. С чего начнём?`,
+    Spanish: `¡Hola! Practiquemos **${word1}** juntos. ¿Por dónde empezamos?`,
+    French: `Salut ! Travaillons **${word1}** ensemble. On commence par quoi ?`,
+    German: `Hallo! Lass uns gemeinsam **${word1}** üben. Womit fangen wir an?`
   };
   if (presets[chatLanguageName]) return presets[chatLanguageName];
 

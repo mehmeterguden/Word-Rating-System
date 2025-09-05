@@ -19,7 +19,6 @@
   ],
   "author": "mehmeterguden",
   "license": "MIT",
-
   "repository": {
     "type": "git",
     "url": "https://github.com/mehmeterguden/word-rating-system.git"
@@ -36,6 +35,15 @@
     "@types/node": "^16.11.56",
     "@types/react": "^18.0.17",
     "@types/react-dom": "^18.0.6",
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0",
+    "google-auth-library": "^10.3.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.18.0",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-scripts": "5.0.1",
@@ -77,3 +85,5 @@
     "npm": ">=8.0.0"
   }
 }
+
+

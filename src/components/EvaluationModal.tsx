@@ -149,7 +149,7 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
   };
   const getVoiceKey = (code: string) => `tts-voice-${code}`;
 
-  // Reset reveal and AI state when word changes
+  // Reset reveal and AI state when word changes; ensure chat gets a greeting for the current word
   useEffect(() => {
     setIsRevealed(false);
     // Only reset AI content if it's a different word
@@ -158,10 +158,9 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
       setAiMessages([]);
       setAiError(null);
     }
-    // Only reset chat history if it's a different word
-    if (chatMessages.length > 1 && chatMessages[0]?.wordId !== currentWord?.id) {
+    // If there is no chat for this word (either empty or belongs to different word), seed with greeting
+    if ((chatMessages.length === 0) || (chatMessages[0]?.wordId !== currentWord?.id)) {
       setChatHistory([]);
-      // Prepare chat greeting in preferred language
       (async () => {
         try {
           let chatLang = 'English';
@@ -174,7 +173,7 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
           });
           setChatMessages([{ id: 'welcome', role: 'assistant', text: greet, wordId: currentWord?.id }]);
         } catch {
-          setChatMessages([{ id: 'welcome', role: 'assistant', text: `Hello! We can chat here. I can help you with the word "${currentWord?.text1 || ''}". How can I help?`, wordId: currentWord?.id }]);
+          setChatMessages([{ id: 'welcome', role: 'assistant', text: `Hi! I'm here to help with anything, especially with **${currentWord?.text1 || ''}**. How can I help?`, wordId: currentWord?.id }]);
         }
       })();
     }
@@ -370,25 +369,6 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
       // Open Chat mode
       setIsChatMode(true);
       setAiOpen(true);
-      
-      // Create greeting message if chat is empty
-      if (chatMessages.length === 0) {
-        (async () => {
-          try {
-            let chatLang = 'English';
-            try { chatLang = localStorage.getItem('word-rating-system-ai-language') || 'English'; } catch {}
-            const greet = await generateChatGreeting({ 
-              word1: currentWord?.text1 || '', 
-              chatLanguageName: chatLang,
-              sourceLanguageName,
-              targetLanguageName
-            });
-            setChatMessages([{ id: 'welcome', role: 'assistant', text: greet, wordId: currentWord?.id }]);
-          } catch {
-            setChatMessages([{ id: 'welcome', role: 'assistant', text: `Hello! I'm here to help you with anything, especially with **${currentWord?.text1 || ''}**. How can I help you?`, wordId: currentWord?.id }]);
-          }
-        })();
-      }
     }
   };
 
