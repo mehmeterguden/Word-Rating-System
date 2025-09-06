@@ -27,8 +27,8 @@ export interface AiResult {
 }
 
 const MODELS = [
-  'gemini-2.5-flash-lite', 
   'gemini-2.5-flash',
+  'gemini-2.5-flash-lite', 
   'gemini-2.0-flash',
   'gemini-2.0-flash-lite', 
   'gemini-2.5-pro', 
@@ -36,12 +36,10 @@ const MODELS = [
 
 // Keep track of which models have been tried
 let triedModels = new Set<string>();
-let currentModel = MODELS[0]; // Track current model
 let modelSwitchCallback: ((fromModel: string, toModel: string, reason: string) => void) | null = null;
 
 const resetModelTries = () => {
   triedModels.clear();
-  currentModel = MODELS[0]; // Reset to first model
 };
 
 // Function to register model switch callback
@@ -453,7 +451,7 @@ export async function generateDefinitionOnly(params: {
   const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
   if (!apiKey) throw new Error('Missing REACT_APP_GEMINI_API_KEY');
 
-  const { word, examplesLanguageName, explanationLanguageName, sourceLanguageName } = params;
+  const { word, examplesLanguageName, explanationLanguageName } = params;
   const prompt = `You are a helpful language tutor. The user is learning the word "${word}".
 - Examples (if referenced) are in ${examplesLanguageName}.
 - Provide a detailed, beginner-friendly definition in ${explanationLanguageName}.

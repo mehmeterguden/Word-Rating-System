@@ -1,4 +1,4 @@
-export type Page = 'home' | 'add' | 'evaluate' | 'sets' | 'settings' | 'debug';
+export type Page = 'home' | 'add' | 'evaluate' | 'study' | 'sets' | 'settings' | 'debug' | 'login' | 'register';
 
 export type DifficultyLevel = 0 | 1 | 2 | 3 | 4 | 5;
 
@@ -9,6 +9,9 @@ export interface Word {
   language1Name?: string; // Learning language name for text1
   language2Name?: string; // Known language name for text2
   difficulty: DifficultyLevel;
+  internalScore?: number; // Internal score for algorithm (0.5-5.5)
+  averageResponseTime?: number; // Average response time in milliseconds
+  consecutiveCorrectForWord?: number; // Consecutive correct for this specific word
   isEvaluated: boolean;
   createdAt: Date;
   setId: string;

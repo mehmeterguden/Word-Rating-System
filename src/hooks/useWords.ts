@@ -74,20 +74,17 @@ export const useWords = (activeSetId?: string | null) => {
     }
   }, [activeSetId]); // Only depend on activeSetId
 
-  // Save words to localStorage whenever words state changes
-  useEffect(() => {
-    if (!isLoaded || isInitialLoad.current) {
-      console.log('⏳ useWords: Not saving yet, still loading or initial load...');
+  // Prevent saving during initial load or when activeSetId is undefined
+  const shouldSave = isLoaded && !isInitialLoad.current && activeSetId;
+
+  // Save words to localStorage only when explicitly needed
+  const saveWordsToStorage = useCallback((wordsToSave: Word[]) => {
+    if (!shouldSave) {
+      console.log('⏳ useWords: Not saving yet, shouldSave is false');
       return;
     }
     
-    // Prevent saving if activeSetId is undefined
-    if (!activeSetId) {
-      console.log('⏳ useWords: No active set ID, not saving...');
-      return;
-    }
-    
-    console.log('💾 useWords: Saving to localStorage. Words count:', words.length);
+    console.log('💾 useWords: Saving to localStorage. Words count:', wordsToSave.length);
     console.log('💾 useWords: Active set ID:', activeSetId);
     
     try {
@@ -100,7 +97,7 @@ export const useWords = (activeSetId?: string | null) => {
       console.log('💾 useWords: Other words (not current set):', otherWords.length);
       
       // Add current set's words
-      const updatedAllWords = [...otherWords, ...words];
+      const updatedAllWords = [...otherWords, ...wordsToSave];
       console.log('💾 useWords: Total words after update:', updatedAllWords.length);
       
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedAllWords));
@@ -108,13 +105,13 @@ export const useWords = (activeSetId?: string | null) => {
     } catch (error) {
       console.error('❌ useWords: Error saving to localStorage:', error);
       try {
-        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(words));
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(wordsToSave));
         console.log('🔄 useWords: Saved to sessionStorage as fallback');
       } catch (sessionError) {
         console.error('❌ useWords: Error saving to sessionStorage:', sessionError);
       }
     }
-  }, [words, isLoaded, activeSetId]);
+  }, [shouldSave, activeSetId]);
 
   const addWords = useCallback((wordList: string[], setId: string) => {
     console.log('➕ useWords: Adding words to set:', setId, wordList);
@@ -131,9 +128,13 @@ export const useWords = (activeSetId?: string | null) => {
     setWords(prevWords => {
       const updatedWords = [...prevWords, ...newWords];
       console.log('✅ useWords: Added', newWords.length, 'words. Total words in set:', updatedWords.length);
+      
+      // Save to storage immediately with the new words
+      setTimeout(() => saveWordsToStorage(updatedWords), 0);
+      
       return updatedWords;
     });
-  }, []);
+  }, [saveWordsToStorage]);
 
   const addBilingualWords = useCallback((wordPairs: { text1: string; text2: string; language1Name?: string; language2Name?: string }[], setId: string) => {
     console.log('➕ useWords: Adding bilingual words to set:', setId, wordPairs);
@@ -152,40 +153,65 @@ export const useWords = (activeSetId?: string | null) => {
     setWords(prevWords => {
       const updatedWords = [...prevWords, ...newWords];
       console.log('✅ useWords: Added', newWords.length, 'bilingual words. Total words in set:', updatedWords.length);
+      
+      // Save to storage immediately with the new words
+      setTimeout(() => saveWordsToStorage(updatedWords), 0);
+      
       return updatedWords;
     });
-  }, []);
+  }, [saveWordsToStorage]);
 
-  const updateDifficulty = useCallback((id: number, difficulty: DifficultyLevel) => {
-    console.log('🔄 useWords: Updating difficulty for word', id, 'to', difficulty);
-    setWords(prevWords => 
-      prevWords.map(word => 
+  const updateDifficulty = useCallback((id: number, difficulty: DifficultyLevel, internalScore?: number, averageResponseTime?: number, consecutiveCorrectForWord?: number) => {
+    console.log('🔄 useWords: Updating difficulty for word', id, 'to', difficulty, 'with internal score:', internalScore, 'avg response time:', averageResponseTime, 'consecutive correct:', consecutiveCorrectForWord);
+    setWords(prevWords => {
+      const updatedWords = prevWords.map(word => 
         word.id === id 
-          ? { ...word, difficulty, isEvaluated: difficulty > 0 }
+          ? { 
+              ...word, 
+              difficulty, 
+              internalScore: internalScore !== undefined ? internalScore : word.internalScore,
+              averageResponseTime: averageResponseTime !== undefined ? averageResponseTime : word.averageResponseTime,
+              consecutiveCorrectForWord: consecutiveCorrectForWord !== undefined ? consecutiveCorrectForWord : word.consecutiveCorrectForWord,
+              isEvaluated: difficulty > 0 
+            }
           : word
-      )
-    );
-  }, []);
+      );
+      
+      // Save to storage immediately with the updated words
+      setTimeout(() => saveWordsToStorage(updatedWords), 0);
+      
+      return updatedWords;
+    });
+  }, [saveWordsToStorage]);
 
   const removeWord = useCallback((id: number) => {
     console.log('🗑️ useWords: Removing word with id:', id);
     setWords(prevWords => {
       const updatedWords = prevWords.filter(word => word.id !== id);
       console.log('✅ useWords: Removed word. Total words in set:', updatedWords.length);
+      
+      // Save to storage immediately with the updated words
+      setTimeout(() => saveWordsToStorage(updatedWords), 0);
+      
       return updatedWords;
     });
-  }, []);
+  }, [saveWordsToStorage]);
 
   const resetEvaluation = useCallback(() => {
     console.log('🔄 useWords: Resetting evaluation for all words');
-    setWords(prevWords => 
-      prevWords.map(word => ({ 
+    setWords(prevWords => {
+      const updatedWords = prevWords.map(word => ({ 
         ...word, 
-        difficulty: 0, 
+        difficulty: 0 as DifficultyLevel, 
         isEvaluated: false 
-      }))
-    );
-  }, []);
+      }));
+      
+      // Save to storage immediately with the updated words
+      setTimeout(() => saveWordsToStorage(updatedWords), 0);
+      
+      return updatedWords;
+    });
+  }, [saveWordsToStorage]);
 
   const exportToExcel = useCallback((setId: string) => {
     console.log('📊 useWords: Exporting to Excel for set:', setId);
@@ -294,6 +320,7 @@ export const useWords = (activeSetId?: string | null) => {
     resetEvaluation,
     exportToExcel,
     exportToText,
+    saveWordsToStorage,
     isLoaded
   };
 };

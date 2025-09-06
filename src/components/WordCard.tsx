@@ -1,11 +1,13 @@
 import React from 'react';
 import { Word, DifficultyLevel } from '../types';
+import { displayLevelToScore } from '../utils/studyAlgorithm';
 
 interface WordCardProps {
   word: Word;
-  onUpdateDifficulty: (id: number, difficulty: DifficultyLevel) => void;
+  onUpdateDifficulty: (id: number, difficulty: DifficultyLevel, internalScore?: number) => void;
   onRemoveWord: (id: number) => void;
   onResetEvaluation: (id: number) => void;
+  onStartEvaluationWithWord?: (word: Word) => void;
   fallbackLearningLanguageName?: string; // Used if word.language1Name is missing
   fallbackKnownLanguageName?: string; // Used if word.language2Name is missing
 }
@@ -15,6 +17,7 @@ const WordCard: React.FC<WordCardProps> = ({
   onUpdateDifficulty,
   onRemoveWord,
   onResetEvaluation,
+  onStartEvaluationWithWord,
   fallbackLearningLanguageName,
   fallbackKnownLanguageName
 }) => {
@@ -62,8 +65,94 @@ const WordCard: React.FC<WordCardProps> = ({
     }
   };
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Don't trigger if clicking on buttons or interactive elements
+    if (
+      (e.target as HTMLElement).closest('button') ||
+      (e.target as HTMLElement).closest('[role="button"]')
+    ) {
+      return;
+    }
+    
+    if (onStartEvaluationWithWord) {
+      onStartEvaluationWithWord(word);
+    }
+  };
+
+  const speakWord = (text: string, language?: string) => {
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      
+      // Set language if available
+      if (language) {
+        utterance.lang = getLanguageCode(language);
+      }
+      
+      // Set voice properties for better pronunciation
+      utterance.rate = 0.8;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+      
+      // Try to find a voice that matches the language
+      const voices = speechSynthesis.getVoices();
+      const preferredVoice = voices.find(voice => 
+        voice.lang.startsWith(getLanguageCode(language || 'en'))
+      );
+      
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
+      }
+      
+      speechSynthesis.speak(utterance);
+    } else {
+      console.warn('Speech synthesis not supported');
+    }
+  };
+
+  const getLanguageCode = (languageName: string): string => {
+    const languageMap: { [key: string]: string } = {
+      'English': 'en-US',
+      'Turkish': 'tr-TR',
+      'Spanish': 'es-ES',
+      'French': 'fr-FR',
+      'German': 'de-DE',
+      'Italian': 'it-IT',
+      'Portuguese': 'pt-PT',
+      'Russian': 'ru-RU',
+      'Chinese': 'zh-CN',
+      'Japanese': 'ja-JP',
+      'Korean': 'ko-KR',
+      'Arabic': 'ar-SA',
+      'Hindi': 'hi-IN',
+      'Dutch': 'nl-NL',
+      'Swedish': 'sv-SE',
+      'Norwegian': 'no-NO',
+      'Danish': 'da-DK',
+      'Finnish': 'fi-FI',
+      'Polish': 'pl-PL',
+      'Czech': 'cs-CZ',
+      'Hungarian': 'hu-HU',
+      'Greek': 'el-GR',
+      'Hebrew': 'he-IL',
+      'Thai': 'th-TH',
+      'Vietnamese': 'vi-VN',
+      'Indonesian': 'id-ID',
+      'Malay': 'ms-MY',
+      'Filipino': 'fil-PH'
+    };
+    
+    return languageMap[languageName] || 'en-US';
+  };
+
   return (
-    <div className="bg-white/95 backdrop-blur-sm rounded-3xl p-6 hover:bg-white transition-all duration-300 shadow-xl hover:shadow-2xl border border-slate-100 group relative overflow-hidden">
+    <div 
+      onClick={handleCardClick}
+      className={`bg-white/95 backdrop-blur-sm rounded-3xl p-6 transition-all duration-300 shadow-xl border border-slate-100 group relative overflow-hidden ${
+        onStartEvaluationWithWord 
+          ? 'hover:bg-white hover:shadow-2xl hover:scale-[1.02] cursor-pointer hover:border-blue-200 hover:ring-2 hover:ring-blue-100' 
+          : 'hover:bg-white hover:shadow-2xl'
+      }`}
+    >
       <div className="flex items-center justify-between">
         {/* Left side - Word text and status */}
         <div className="flex items-center space-x-4 min-w-0 flex-1">
@@ -72,6 +161,18 @@ const WordCard: React.FC<WordCardProps> = ({
               <span className={`text-xl font-semibold truncate ${word.isEvaluated ? 'text-gray-900' : 'text-gray-700'}`}>
                 {word.text1}
               </span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  speakWord(word.text1, word.language1Name || fallbackLearningLanguageName);
+                }}
+                className="p-1.5 rounded-full text-blue-500 hover:text-blue-700 hover:bg-blue-50 transition-all duration-200 hover:scale-110"
+                title={`Listen to pronunciation of "${word.text1}"`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                </svg>
+              </button>
               {((word.language1Name || fallbackLearningLanguageName) && (word.language2Name || fallbackKnownLanguageName)) && (
                 <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200 whitespace-nowrap flex-shrink-0">
                   {(word.language1Name || fallbackLearningLanguageName || '').toString()} → {(word.language2Name || fallbackKnownLanguageName || '').toString()}
@@ -98,7 +199,10 @@ const WordCard: React.FC<WordCardProps> = ({
             {[1, 2, 3, 4, 5].map((rating) => (
               <button
                 key={rating}
-                onClick={() => onUpdateDifficulty(word.id, rating as DifficultyLevel)}
+                onClick={() => {
+                  const internalScore = displayLevelToScore(rating as DifficultyLevel);
+                  onUpdateDifficulty(word.id, rating as DifficultyLevel, internalScore);
+                }}
                 className={`w-14 h-14 rounded-2xl text-lg font-extrabold transition-all duration-300 transform hover:scale-110 active:scale-95 ${
                   getRatingButtonColor(rating, word.difficulty === rating)
                 }`}

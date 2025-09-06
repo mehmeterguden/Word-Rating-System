@@ -4,6 +4,7 @@ import Navigation from './components/Navigation';
 import Home from './pages/Home';
 import AddWords from './pages/AddWords';
 import EvaluationOptions from './pages/EvaluationOptions';
+import Study from './pages/Study';
 import WordSetManager from './pages/WordSetManager';
 import DebugPage from './pages/DebugPage';
 import Settings from './pages/Settings';
@@ -13,6 +14,7 @@ import { useEvaluation } from './hooks/useEvaluation';
 import { useWordSets } from './hooks/useWordSets';
 import { Page, Word } from './types';
 import { registerModelSwitchCallback } from './utils/ai';
+import { displayLevelToScore } from './utils/studyAlgorithm';
 import ModelSwitchToast from './components/ModelSwitchToast';
 
 function App() {
@@ -181,7 +183,10 @@ function App() {
         {currentPage === 'home' && (
           <Home 
             words={words}
-            onUpdateDifficulty={updateDifficulty}
+            onUpdateDifficulty={(id, difficulty) => {
+              const internalScore = displayLevelToScore(difficulty);
+              updateDifficulty(id, difficulty, internalScore);
+            }}
             onRemoveWord={removeWord}
             onResetEvaluation={resetEvaluation}
           />
@@ -203,6 +208,14 @@ function App() {
             words={words}
             onStartEvaluation={handleStartEvaluationWithWords}
             onClose={() => setCurrentPage('home')}
+          />
+        )}
+        
+        {currentPage === 'study' && (
+          <Study 
+            words={words}
+            onGoHome={() => setCurrentPage('home')}
+            updateDifficulty={updateDifficulty}
           />
         )}
         
@@ -239,7 +252,8 @@ function App() {
           onRate={(difficulty) => {
             if (getCurrentWord()) {
               const currentWord = getCurrentWord()!;
-              updateDifficulty(currentWord.id, difficulty);
+              const internalScore = displayLevelToScore(difficulty);
+              updateDifficulty(currentWord.id, difficulty, internalScore);
               updateEvaluationWord(currentWord.id, difficulty);
               nextEvaluation();
             }

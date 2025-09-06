@@ -1,8 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { Word } from '../types';
 
 const DebugPage: React.FC = () => {
   const [localStorageData, setLocalStorageData] = useState<{ [key: string]: string }>({});
   const [isExpanded, setIsExpanded] = useState<{ [key: string]: boolean }>({});
+  const [duplicateStats, setDuplicateStats] = useState<{
+    totalWords: number;
+    uniqueWords: number;
+    duplicates: number;
+    duplicateGroups: { [key: string]: Word[] };
+  } | null>(null);
 
   useEffect(() => {
     // Get all localStorage data
@@ -19,7 +26,54 @@ const DebugPage: React.FC = () => {
       }
     }
     setLocalStorageData(data);
+    
+    // Analyze word duplicates
+    analyzeWordDuplicates();
   }, []);
+
+  const analyzeWordDuplicates = () => {
+    try {
+      const wordsData = localStorage.getItem('word-rating-system-words');
+      if (!wordsData) {
+        setDuplicateStats(null);
+        return;
+      }
+
+      const words: Word[] = JSON.parse(wordsData);
+      const wordGroups: { [key: string]: Word[] } = {};
+      
+      // Group words by text1 and text2 combination
+      words.forEach(word => {
+        const key = `${word.text1}|${word.text2}`;
+        if (!wordGroups[key]) {
+          wordGroups[key] = [];
+        }
+        wordGroups[key].push(word);
+      });
+
+      // Find duplicates
+      const duplicateGroups: { [key: string]: Word[] } = {};
+      Object.entries(wordGroups).forEach(([key, group]) => {
+        if (group.length > 1) {
+          duplicateGroups[key] = group;
+        }
+      });
+
+      const totalWords = words.length;
+      const uniqueWords = Object.keys(wordGroups).length;
+      const duplicates = Object.values(duplicateGroups).reduce((acc, group) => acc + group.length - 1, 0);
+
+      setDuplicateStats({
+        totalWords,
+        uniqueWords,
+        duplicates,
+        duplicateGroups
+      });
+    } catch (error) {
+      console.error('Error analyzing duplicates:', error);
+      setDuplicateStats(null);
+    }
+  };
 
   const toggleExpanded = (key: string) => {
     setIsExpanded(prev => ({
@@ -44,6 +98,109 @@ const DebugPage: React.FC = () => {
         delete newData[key];
         return newData;
       });
+      analyzeWordDuplicates();
+    }
+  };
+
+  const removeDuplicateWords = () => {
+    if (!duplicateStats || duplicateStats.duplicates === 0) {
+      alert('No duplicate words found!');
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to remove ${duplicateStats.duplicates} duplicate words? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const wordsData = localStorage.getItem('word-rating-system-words');
+      if (!wordsData) return;
+
+      const words: Word[] = JSON.parse(wordsData);
+      const wordGroups: { [key: string]: Word[] } = {};
+      
+      // Group words by text1 and text2 combination
+      words.forEach(word => {
+        const key = `${word.text1}|${word.text2}`;
+        if (!wordGroups[key]) {
+          wordGroups[key] = [];
+        }
+        wordGroups[key].push(word);
+      });
+
+      // Keep only the first occurrence of each word group
+      const cleanedWords: Word[] = [];
+      Object.values(wordGroups).forEach(group => {
+        // Sort by creation date and keep the oldest one
+        const sortedGroup = group.sort((a, b) => 
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+        cleanedWords.push(sortedGroup[0]);
+      });
+
+      // Save cleaned words back to localStorage
+      localStorage.setItem('word-rating-system-words', JSON.stringify(cleanedWords));
+      
+      // Refresh data
+      setLocalStorageData(prev => ({
+        ...prev,
+        'word-rating-system-words': JSON.stringify(cleanedWords)
+      }));
+      
+      analyzeWordDuplicates();
+      alert(`Successfully removed ${duplicateStats.duplicates} duplicate words!`);
+    } catch (error) {
+      console.error('Error removing duplicates:', error);
+      alert('Error removing duplicates. Please try again.');
+    }
+  };
+
+  const removeSpecificDuplicates = (key: string) => {
+    if (!duplicateStats || !duplicateStats.duplicateGroups[key]) {
+      return;
+    }
+
+    const group = duplicateStats.duplicateGroups[key];
+    if (group.length <= 1) return;
+
+    if (!window.confirm(`Are you sure you want to remove ${group.length - 1} duplicate(s) of "${group[0].text1} - ${group[0].text2}"?`)) {
+      return;
+    }
+
+    try {
+      const wordsData = localStorage.getItem('word-rating-system-words');
+      if (!wordsData) return;
+
+      const words: Word[] = JSON.parse(wordsData);
+      const [text1, text2] = key.split('|');
+      
+      // Find all words with this combination
+      const matchingWords = words.filter(word => word.text1 === text1 && word.text2 === text2);
+      
+      // Keep only the oldest one
+      const sortedWords = matchingWords.sort((a, b) => 
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+      const wordToKeep = sortedWords[0];
+      
+      // Remove all matching words and add back only the one to keep
+      const cleanedWords = words.filter(word => !(word.text1 === text1 && word.text2 === text2));
+      cleanedWords.push(wordToKeep);
+      
+      // Save cleaned words back to localStorage
+      localStorage.setItem('word-rating-system-words', JSON.stringify(cleanedWords));
+      
+      // Refresh data
+      setLocalStorageData(prev => ({
+        ...prev,
+        'word-rating-system-words': JSON.stringify(cleanedWords)
+      }));
+      
+      analyzeWordDuplicates();
+      alert(`Successfully removed ${group.length - 1} duplicate(s) of "${text1} - ${text2}"!`);
+    } catch (error) {
+      console.error('Error removing specific duplicates:', error);
+      alert('Error removing duplicates. Please try again.');
     }
   };
 
@@ -95,6 +252,80 @@ const DebugPage: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Duplicate Words Section */}
+        {duplicateStats && (
+          <div className="mb-8">
+            <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl ring-1 ring-slate-200 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Duplicate Words Analysis</h2>
+                  <p className="text-slate-600 mt-1">
+                    Found {duplicateStats.duplicates} duplicate words out of {duplicateStats.totalWords} total words
+                  </p>
+                </div>
+                {duplicateStats.duplicates > 0 && (
+                  <button
+                    onClick={removeDuplicateWords}
+                    className="px-6 py-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700 transition-colors font-medium"
+                  >
+                    Remove All Duplicates
+                  </button>
+                )}
+              </div>
+
+              {/* Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="bg-blue-50 p-4 rounded-xl">
+                  <div className="text-2xl font-bold text-blue-600">{duplicateStats.totalWords}</div>
+                  <div className="text-sm text-blue-700">Total Words</div>
+                </div>
+                <div className="bg-green-50 p-4 rounded-xl">
+                  <div className="text-2xl font-bold text-green-600">{duplicateStats.uniqueWords}</div>
+                  <div className="text-sm text-green-700">Unique Words</div>
+                </div>
+                <div className="bg-red-50 p-4 rounded-xl">
+                  <div className="text-2xl font-bold text-red-600">{duplicateStats.duplicates}</div>
+                  <div className="text-sm text-red-700">Duplicates</div>
+                </div>
+              </div>
+
+              {/* Duplicate Groups */}
+              {Object.keys(duplicateStats.duplicateGroups).length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4">
+                    Duplicate Groups ({Object.keys(duplicateStats.duplicateGroups).length})
+                  </h3>
+                  <div className="max-h-96 overflow-y-auto space-y-3 pr-2">
+                    {Object.entries(duplicateStats.duplicateGroups).map(([key, group]) => (
+                      <div key={key} className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="font-medium text-slate-800">
+                              {group[0].text1} - {group[0].text2}
+                            </div>
+                            <div className="text-sm text-slate-600 mt-1">
+                              {group.length} copies • Set: {group[0].setId}
+                            </div>
+                            <div className="text-xs text-slate-500 mt-1">
+                              IDs: {group.map(w => w.id).join(', ')}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => removeSpecificDuplicates(key)}
+                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm flex-shrink-0 ml-3"
+                          >
+                            Remove {group.length - 1} Duplicate{group.length - 1 > 1 ? 's' : ''}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Data Display */}
         <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl ring-1 ring-slate-200 overflow-hidden">
