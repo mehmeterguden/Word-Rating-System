@@ -3,14 +3,13 @@ import { LANGUAGES, getUniqueLanguages } from '../utils/languages';
 import { Page } from '../types';
 
 interface SettingsProps {
-  setCurrentPage: (page: Page) => void;
   setDeveloperMode: (enabled: boolean) => void;
 }
 
 const AI_LANG_KEY = 'word-rating-system-ai-language';
 const DEV_MODE_KEY = 'word-rating-system-developer-mode';
 
-const Settings: React.FC<SettingsProps> = ({ setCurrentPage, setDeveloperMode }) => {
+const Settings: React.FC<SettingsProps> = ({ setDeveloperMode }) => {
   const [aiLanguage, setAiLanguage] = useState<string>(() => {
     try {
       return localStorage.getItem(AI_LANG_KEY) || 'English';
@@ -291,7 +290,7 @@ const Settings: React.FC<SettingsProps> = ({ setCurrentPage, setDeveloperMode })
                 <div className="flex items-center justify-between pt-2 border-t border-purple-200">
                   <p className="text-xs text-slate-600">View and manage localStorage data, debug application state, and access development tools.</p>
                   <button
-                    onClick={() => setCurrentPage('debug')}
+                    onClick={() => window.location.href = '/debug'}
                     className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-200 shadow-sm hover:shadow-md font-medium text-sm"
                   >
                     Open Debug Panel

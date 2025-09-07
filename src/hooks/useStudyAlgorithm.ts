@@ -92,6 +92,7 @@ export function useStudyAlgorithm({ updateDifficulty }: UseStudyAlgorithmProps =
   const [isPaused, setIsPaused] = useState(false);
   const [wordHistory, setWordHistory] = useState<number[]>([]); // Track word navigation history
   const [responseHistory, setResponseHistory] = useState<Map<number, StudyResponse>>(new Map()); // Track responses for rollback
+  const [scoreHistory, setScoreHistory] = useState<Map<number, { previousScore: number; previousLevel: number; previousConsecutiveCorrect: number }>>(new Map()); // Track score history for restoration
   const [lastScoreChange, setLastScoreChange] = useState<{
     previousScore: number;
     newScore: number;
@@ -182,6 +183,7 @@ export function useStudyAlgorithm({ updateDifficulty }: UseStudyAlgorithmProps =
     setIsPaused(false);
     setWordHistory([0]); // Start with first word in history
     setResponseHistory(new Map()); // Clear response history
+    setScoreHistory(new Map()); // Clear score history
 
     console.log('🎓 Study session started:', sessionId, 'with', words.length, 'words');
   }, [initializeStudyWords, sortWordsByPriority]);
@@ -280,6 +282,13 @@ export function useStudyAlgorithm({ updateDifficulty }: UseStudyAlgorithmProps =
 
     // Store response for rollback
     setResponseHistory(prev => new Map(prev.set(currentWord.id, response)));
+    
+    // Store score history for restoration
+    setScoreHistory(prev => new Map(prev.set(currentWord.id, {
+      previousScore: previousScore,
+      previousLevel: currentWord.difficulty,
+      previousConsecutiveCorrect: currentWord.consecutiveCorrectForWord || 0
+    })));
 
     // Update score change tracking
     const newLevel = scoreToDisplayLevel(newScore);
@@ -316,6 +325,7 @@ export function useStudyAlgorithm({ updateDifficulty }: UseStudyAlgorithmProps =
     setTimeout(() => {
       if (currentIndex < studyWords.length - 1) {
         const nextIndex = currentIndex + 1;
+        setWordHistory(prev => [...prev, nextIndex]);
         setCurrentIndex(nextIndex);
         setCurrentWord(studyWords[nextIndex] || null);
       } else {
@@ -331,6 +341,7 @@ export function useStudyAlgorithm({ updateDifficulty }: UseStudyAlgorithmProps =
   const skipWord = useCallback(() => {
     if (currentIndex < studyWords.length - 1) {
       const nextIndex = currentIndex + 1;
+      setWordHistory(prev => [...prev, nextIndex]);
       setCurrentIndex(nextIndex);
       setCurrentWord(studyWords[nextIndex] || null);
     }
@@ -342,12 +353,52 @@ export function useStudyAlgorithm({ updateDifficulty }: UseStudyAlgorithmProps =
       const newHistory = [...wordHistory];
       newHistory.pop(); // Remove current word
       const previousIndex = newHistory[newHistory.length - 1];
+      const previousWord = studyWords[previousIndex];
+      
+      if (previousWord) {
+        // Restore previous score if available
+        const scoreData = scoreHistory.get(previousWord.id);
+        if (scoreData) {
+          // Check if the previous response was "Know" to decrease word streak
+          const previousResponse = responseHistory.get(previousWord.id);
+          let correctedConsecutiveCorrect = scoreData.previousConsecutiveCorrect;
+          
+          if (previousResponse && previousResponse.isKnown) {
+            // If previous answer was "Know", decrease word streak by 1
+            correctedConsecutiveCorrect = Math.max(0, scoreData.previousConsecutiveCorrect - 1);
+            console.log(`📉 Decreasing word streak for "${previousWord.text1}" from ${scoreData.previousConsecutiveCorrect} to ${correctedConsecutiveCorrect}`);
+          }
+          
+          const restoredWord: StudyWord = {
+            ...previousWord,
+            internalScore: scoreData.previousScore,
+            difficulty: scoreData.previousLevel as DifficultyLevel,
+            consecutiveCorrectForWord: correctedConsecutiveCorrect,
+          };
+          
+          // Update study words with restored score and corrected word streak
+          setStudyWords(prev => prev.map((word, index) => 
+            index === previousIndex ? restoredWord : word
+          ));
+          setCurrentWord(restoredWord);
+          
+          // Update main word data with restored score and corrected word streak
+          if (updateDifficulty) {
+            updateDifficulty(previousWord.id, scoreData.previousLevel as DifficultyLevel, scoreData.previousScore, undefined, correctedConsecutiveCorrect);
+            console.log(`💾 Study: Restored main word data for "${previousWord.text1}" to level ${scoreData.previousLevel} with internal score ${scoreData.previousScore.toFixed(2)} and word streak ${correctedConsecutiveCorrect}`);
+          }
+          
+          console.log(`🔄 Going back to word ${previousIndex}: "${previousWord.text1}" with restored score ${scoreData.previousScore.toFixed(2)} (level ${scoreData.previousLevel}) and word streak ${correctedConsecutiveCorrect}`);
+        } else {
+          setCurrentWord(previousWord);
+          console.log(`🔄 Going back to word ${previousIndex}: "${previousWord.text1}" (no score change)`);
+        }
+      }
       
       setWordHistory(newHistory);
       setCurrentIndex(previousIndex);
-      setCurrentWord(studyWords[previousIndex] || null);
     }
-  }, [wordHistory, studyWords]);
+  }, [wordHistory, studyWords, scoreHistory, updateDifficulty]);
 
   // Go to next word with history tracking
   const goToNextWord = useCallback(() => {
@@ -389,6 +440,13 @@ export function useStudyAlgorithm({ updateDifficulty }: UseStudyAlgorithmProps =
 
     // Remove from response history
     setResponseHistory(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(currentWord.id);
+      return newMap;
+    });
+    
+    // Remove from score history
+    setScoreHistory(prev => {
       const newMap = new Map(prev);
       newMap.delete(currentWord.id);
       return newMap;

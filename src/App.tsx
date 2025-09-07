@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import Header from './components/Header';
 import Navigation from './components/Navigation';
 import Home from './pages/Home';
@@ -18,7 +19,6 @@ import { displayLevelToScore } from './utils/studyAlgorithm';
 import ModelSwitchToast from './components/ModelSwitchToast';
 
 function App() {
-  const [currentPage, setCurrentPage] = useState<Page>('home');
   const [developerMode, setDeveloperMode] = useState<boolean>(() => {
     try {
       return localStorage.getItem('word-rating-system-developer-mode') === 'true';
@@ -139,10 +139,6 @@ function App() {
     }
   }, [setsLoaded, hasWordSets, getDefaultSet]);
 
-  const handleStartEvaluation = () => {
-    setCurrentPage('evaluate');
-  };
-
   const handleStartEvaluationWithWords = (selectedWords: Word[]) => {
     startEvaluation(selectedWords);
   };
@@ -156,123 +152,124 @@ function App() {
     if (activeSetId) {
       addBilingualWords(wordPairs, activeSetId);
       console.log('🏠 App: addBilingualWords called, redirecting to home');
-      // Redirect to home page after adding words
-      setCurrentPage('home');
     } else {
       console.error('🏠 App: No active set selected');
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header 
-        words={words}
-      />
-      <Navigation 
-        currentPage={currentPage} 
-        setCurrentPage={setCurrentPage} 
-        words={words} 
-        onStartEvaluation={handleStartEvaluation}
-        wordSets={wordSets}
-        activeSetId={activeSetId}
-        onSetActive={setActiveSet}
-        developerMode={developerMode}
-      />
-      
-      <main className="py-8">
-        {currentPage === 'home' && (
-          <Home 
-            words={words}
-            onUpdateDifficulty={(id, difficulty) => {
-              const internalScore = displayLevelToScore(difficulty);
-              updateDifficulty(id, difficulty, internalScore);
-            }}
-            onRemoveWord={removeWord}
-            onResetEvaluation={resetEvaluation}
-          />
-        )}
-        
-        {currentPage === 'add' && (
-          <AddWords 
-            onAddWords={handleAddWords}
-            activeSetId={activeSetId}
-            wordSets={wordSets}
-            defaultLanguage1={defaultLanguage1}
-            defaultLanguage2={defaultLanguage2}
-            defaultSeparator={defaultSeparator}
-          />
-        )}
-        
-        {currentPage === 'evaluate' && (
-          <EvaluationOptions 
-            words={words}
-            onStartEvaluation={handleStartEvaluationWithWords}
-            onClose={() => setCurrentPage('home')}
-          />
-        )}
-        
-        {currentPage === 'study' && (
-          <Study 
-            words={words}
-            onGoHome={() => setCurrentPage('home')}
-            updateDifficulty={updateDifficulty}
-          />
-        )}
-        
-        {currentPage === 'sets' && (
-          <WordSetManager
-            wordSets={wordSets}
-            activeSetId={activeSetId}
-            onSetActive={setActiveSet}
-            onCreateSet={createWordSet}
-            onDeleteSet={deleteWordSet}
-            onUpdateSet={updateWordSet}
-            onExportToExcel={exportToExcel}
-            onExportToText={exportToText}
-            onClose={() => setCurrentPage('home')}
-          />
-        )}
-        
-        {currentPage === 'debug' && <DebugPage />}
-        {currentPage === 'settings' && (
-          <Settings setCurrentPage={setCurrentPage} setDeveloperMode={setDeveloperMode} />
-        )}
-
-      </main>
-
-      {/* Evaluation Modal */}
-      {isEvaluationOpen && (
-        <EvaluationModal
-          currentWord={getCurrentWord()}
-          totalWords={getTotalEvaluationWords()}
-          progressPercentage={progressPercentage()}
-          currentIndex={evaluationIndex}
-          targetLanguageName={getCurrentWord()?.language1Name || defaultLanguage1}
-          sourceLanguageName={getCurrentWord()?.language2Name || defaultLanguage2}
-          onRate={(difficulty) => {
-            if (getCurrentWord()) {
-              const currentWord = getCurrentWord()!;
-              const internalScore = displayLevelToScore(difficulty);
-              updateDifficulty(currentWord.id, difficulty, internalScore);
-              updateEvaluationWord(currentWord.id, difficulty);
-              nextEvaluation();
-            }
-          }}
-          onClose={closeEvaluation}
-          onPrevious={previousEvaluation}
-          onNext={nextEvaluation}
+    <Router>
+      <div className="min-h-screen bg-gray-50">
+        <Header 
+          words={words}
         />
-      )}
-      
-      {/* Model Switch Toast */}
-      <ModelSwitchToast
-        isVisible={modelSwitchToast.isVisible}
-        fromModel={modelSwitchToast.fromModel}
-        toModel={modelSwitchToast.toModel}
-        reason={modelSwitchToast.reason}
-        onClose={() => setModelSwitchToast(prev => ({ ...prev, isVisible: false }))}
-      />
-    </div>
+        <Navigation 
+          words={words} 
+          wordSets={wordSets}
+          activeSetId={activeSetId}
+          onSetActive={setActiveSet}
+          developerMode={developerMode}
+        />
+        
+        <main className="py-8">
+          <Routes>
+            <Route path="/" element={
+              <Home 
+                words={words}
+                onUpdateDifficulty={(id, difficulty) => {
+                  const internalScore = displayLevelToScore(difficulty);
+                  updateDifficulty(id, difficulty, internalScore);
+                }}
+                onRemoveWord={removeWord}
+                onResetEvaluation={resetEvaluation}
+              />
+            } />
+            
+            <Route path="/add" element={
+              <AddWords 
+                onAddWords={handleAddWords}
+                activeSetId={activeSetId}
+                wordSets={wordSets}
+                defaultLanguage1={defaultLanguage1}
+                defaultLanguage2={defaultLanguage2}
+                defaultSeparator={defaultSeparator}
+              />
+            } />
+            
+            <Route path="/evaluate" element={
+              <EvaluationOptions 
+                words={words}
+                onStartEvaluation={handleStartEvaluationWithWords}
+                isEvaluationActive={isEvaluationOpen}
+              />
+            } />
+            
+            <Route path="/study" element={
+              <Study 
+                words={words}
+                updateDifficulty={updateDifficulty}
+              />
+            } />
+            
+            <Route path="/sets" element={
+              <WordSetManager
+                wordSets={wordSets}
+                activeSetId={activeSetId}
+                onSetActive={setActiveSet}
+                onCreateSet={createWordSet}
+                onDeleteSet={deleteWordSet}
+                onUpdateSet={updateWordSet}
+                onExportToExcel={exportToExcel}
+                onExportToText={exportToText}
+              />
+            } />
+            
+            <Route path="/settings" element={
+              <Settings setDeveloperMode={setDeveloperMode} />
+            } />
+            
+            {developerMode && (
+              <Route path="/debug" element={<DebugPage />} />
+            )}
+            
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </main>
+
+        {/* Evaluation Modal */}
+        {isEvaluationOpen && (
+          <EvaluationModal
+            currentWord={getCurrentWord()}
+            totalWords={getTotalEvaluationWords()}
+            progressPercentage={progressPercentage()}
+            currentIndex={evaluationIndex}
+            targetLanguageName={getCurrentWord()?.language1Name || defaultLanguage1}
+            sourceLanguageName={getCurrentWord()?.language2Name || defaultLanguage2}
+            onRate={(difficulty) => {
+              if (getCurrentWord()) {
+                const currentWord = getCurrentWord()!;
+                const internalScore = displayLevelToScore(difficulty);
+                updateDifficulty(currentWord.id, difficulty, internalScore);
+                updateEvaluationWord(currentWord.id, difficulty);
+                nextEvaluation();
+              }
+            }}
+            onClose={closeEvaluation}
+            onPrevious={previousEvaluation}
+            onNext={nextEvaluation}
+          />
+        )}
+        
+        {/* Model Switch Toast */}
+        <ModelSwitchToast
+          isVisible={modelSwitchToast.isVisible}
+          fromModel={modelSwitchToast.fromModel}
+          toModel={modelSwitchToast.toModel}
+          reason={modelSwitchToast.reason}
+          onClose={() => setModelSwitchToast(prev => ({ ...prev, isVisible: false }))}
+        />
+      </div>
+    </Router>
   );
 }
 

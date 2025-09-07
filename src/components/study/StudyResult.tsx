@@ -201,3 +201,4 @@ const StudyResult: React.FC<StudyResultProps> = ({
 
 export default StudyResult;
 
+

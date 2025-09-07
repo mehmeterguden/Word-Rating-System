@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { Word, DifficultyLevel } from '../types';
 import { displayLevelToScore } from '../utils/studyAlgorithm';
 import WordCard from '../components/WordCard';
@@ -8,7 +9,6 @@ interface HomeProps {
   onUpdateDifficulty: (id: number, difficulty: DifficultyLevel, internalScore?: number) => void;
   onRemoveWord: (id: number) => void;
   onResetEvaluation: () => void;
-  onStartEvaluationWithWord?: (word: Word) => void;
 }
 
 type FilterType = 'all' | 'pending' | 'evaluated';
@@ -18,9 +18,17 @@ const Home: React.FC<HomeProps> = ({
   words,
   onUpdateDifficulty,
   onRemoveWord,
-  onResetEvaluation,
-  onStartEvaluationWithWord
+  onResetEvaluation
 }) => {
+  const navigate = useNavigate();
+  
+  // Handle word click to start evaluation
+  const handleWordClick = (word: Word) => {
+    // Allow clicking on all words, regardless of evaluation status
+    console.log('🏠 Home: Word clicked:', { id: word.id, text1: word.text1, isEvaluated: word.isEvaluated });
+    navigate(`/evaluate?wordId=${word.id}`);
+  };
+  
   const [filter, setFilter] = useState<FilterType>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [levelFilters, setLevelFilters] = useState<number[]>([]);
@@ -148,33 +156,61 @@ const Home: React.FC<HomeProps> = ({
   const evaluatedCount = words.filter(word => word.isEvaluated).length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100">
       <div className="max-w-7xl mx-auto p-6">
-        {/* Filter Section */}
-        <div className="mb-8">
-          <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl ring-1 ring-slate-200 p-6 relative z-30">
-            {/* Your Words Title - Top Section */}
-            <div className="mb-6">
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg ring-4 ring-blue-100">
-                  <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        {/* Header Section */}
+        <div className="relative bg-gradient-to-br from-white via-blue-50/50 to-indigo-50/50 backdrop-blur-xl rounded-2xl shadow-xl border border-blue-200/50 p-6 mb-6 overflow-hidden">
+          {/* Background decorations */}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-100/40 to-indigo-100/40 rounded-full -translate-y-16 translate-x-16"></div>
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-indigo-100/40 to-blue-100/40 rounded-full translate-y-12 -translate-x-12"></div>
+          
+          <div className="relative z-10">
+            {/* Header Content */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-xl ring-4 ring-blue-100">
+                  <svg className="w-9 h-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                   </svg>
                 </div>
                 <div>
-                  <h2 className="text-4xl font-bold bg-gradient-to-r from-slate-800 via-blue-800 to-indigo-800 bg-clip-text text-transparent tracking-tight">
+                  <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-800 via-indigo-800 to-blue-900 bg-clip-text text-transparent tracking-tight">
                     Your Words
-                  </h2>
-                  <p className="text-slate-500 text-sm mt-1">Manage and organize your word collection</p>
+                  </h1>
+                  <p className="text-slate-600 text-lg mt-1">Manage and organize your word collection</p>
                 </div>
               </div>
+              
+              {/* Add Words Button */}
+              <Link
+                to="/add"
+                className="group relative flex items-center space-x-3 px-8 py-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-2xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:scale-105 font-bold text-lg overflow-hidden h-14"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div className="relative flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center group-hover:bg-white/30 transition-all duration-300">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                  </div>
+                  <span className="tracking-wide">Add Words</span>
+                </div>
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-300 rounded-full animate-pulse"></div>
+              </Link>
             </div>
 
+          </div>
+        </div>
+
+        {/* Filter Section */}
+        <div className="mb-8">
+          <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl ring-1 ring-slate-200 p-6 relative z-30">
+
             {/* Filters - Bottom Section in Single Row */}
-            <div className="flex items-center justify-between gap-4 flex-wrap">
-              <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center justify-between gap-6 flex-wrap">
+              <div className="flex items-center gap-6 flex-wrap">
                 {/* All/Pending/Evaluated toggle */}
-                <div className="flex bg-gradient-to-r from-white to-blue-50/50 rounded-xl p-1.5 ring-1 ring-blue-200/60 shadow-lg backdrop-blur-sm">
+                <div className="flex bg-gradient-to-r from-white to-blue-50/50 rounded-xl p-2 ring-1 ring-blue-200/60 shadow-lg backdrop-blur-sm hover:shadow-xl transition-all duration-300 h-14">
                   <button
                     onClick={() => setFilter('all')}
                     className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2 ${
@@ -231,22 +267,22 @@ const Home: React.FC<HomeProps> = ({
                 </div>
 
                 {/* Search */}
-                <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-r from-slate-100/60 to-blue-100/60 rounded-xl blur-sm"></div>
-                  <div className="relative bg-white/90 rounded-xl ring-1 ring-slate-200/60 shadow-lg backdrop-blur-sm">
+                <div className="relative group h-14">
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-100/60 to-indigo-100/60 rounded-xl blur-sm group-hover:blur-md transition-all duration-300"></div>
+                  <div className="relative bg-white/95 rounded-xl ring-1 ring-blue-200/60 shadow-lg backdrop-blur-sm group-hover:shadow-xl group-hover:ring-blue-300/60 transition-all duration-300 h-full flex items-center">
                     <input
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Search words..."
-                      className="pl-10 pr-10 py-2.5 rounded-xl border-0 bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-300 text-slate-700 placeholder:text-slate-400 min-w-[200px]"
+                      className="pl-12 pr-12 py-0 rounded-xl border-0 bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 placeholder:text-slate-400 min-w-[240px] font-medium h-full"
                     />
-                    <svg className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 text-blue-400 absolute left-4 top-1/2 -translate-y-1/2 group-hover:text-blue-500 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M10 18a8 8 0 100-16 8 8 0 000 16z" />
                     </svg>
                     {searchQuery && (
                       <button
                         onClick={() => setSearchQuery('')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all duration-200 hover:scale-110"
                         aria-label="Clear search"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -258,21 +294,21 @@ const Home: React.FC<HomeProps> = ({
                 </div>
 
                 {/* Level filters */}
-                <div className="bg-gradient-to-r from-white to-blue-50/50 rounded-xl p-2 ring-1 ring-blue-200/60 shadow-lg backdrop-blur-sm">
-                  <div className="flex items-center">
+                <div className="bg-gradient-to-r from-white to-blue-50/50 rounded-xl p-2.5 ring-1 ring-blue-200/60 shadow-lg backdrop-blur-sm hover:shadow-xl transition-all duration-300 h-14 flex items-center">
+                  <div className="flex items-center gap-1">
                     {[1,2,3,4,5].map((lvl, index) => {
                       const active = levelFilters.includes(lvl);
                       return (
                         <div key={lvl} className="flex items-center">
                           <button
                             onClick={() => setLevelFilters((prev) => active ? prev.filter(v => v !== lvl) : [...prev, lvl])}
-                            className={`w-9 h-9 rounded-lg text-sm font-bold transition-all duration-200 ${getLevelChipClasses(lvl, active)} ${active ? 'transform scale-110 shadow-md' : 'hover:scale-105'}`}
+                            className={`w-10 h-10 rounded-xl text-sm font-bold transition-all duration-300 ${getLevelChipClasses(lvl, active)} ${active ? 'transform scale-110 shadow-lg ring-2 ring-white/50' : 'hover:scale-105 hover:shadow-md'}`}
                             title={`Level ${lvl}`}
                           >
                             {lvl}
                           </button>
                           {index < 4 && (
-                            <div className="w-px h-6 bg-blue-200/60 mx-2"></div>
+                            <div className="w-px h-7 bg-blue-200/60 mx-2"></div>
                           )}
                         </div>
                       );
@@ -281,17 +317,17 @@ const Home: React.FC<HomeProps> = ({
                 </div>
 
                 {/* Sort dropdown */}
-                <div className="relative" ref={sortRef}>
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-100/60 to-indigo-100/60 rounded-xl blur-sm"></div>
+                <div className="relative group h-14" ref={sortRef}>
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-100/60 to-indigo-100/60 rounded-xl blur-sm group-hover:blur-md transition-all duration-300"></div>
                   <button
                     onClick={() => setIsSortOpen((v) => !v)}
-                    className="relative bg-white/90 pl-4 pr-10 py-2.5 rounded-xl ring-1 ring-blue-200/60 text-slate-700 shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-300 flex items-center gap-2 backdrop-blur-sm min-w-[140px]"
+                    className="relative bg-white/95 pl-4 pr-10 py-0 rounded-xl ring-1 ring-blue-200/60 text-slate-700 shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-400 flex items-center gap-3 backdrop-blur-sm min-w-[160px] hover:shadow-xl hover:ring-blue-300/60 transition-all duration-300 h-full"
                   >
-                    <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 text-blue-400 group-hover:text-blue-500 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2H3V4zm0 6h10v2H3v-2zm0 6h6v2H3v-2z" />
                     </svg>
-                    <span className="font-medium">{sortLabel}</span>
-                    <svg className="w-4 h-4 text-blue-400 absolute right-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <span className="font-semibold">{sortLabel}</span>
+                    <svg className={`w-4 h-4 text-blue-400 absolute right-3 transition-transform duration-200 ${isSortOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   </button>
@@ -445,7 +481,7 @@ const Home: React.FC<HomeProps> = ({
                       onUpdateDifficulty={onUpdateDifficulty}
                       onRemoveWord={onRemoveWord}
                       onResetEvaluation={(id) => onUpdateDifficulty(id, 0)}
-                      onStartEvaluationWithWord={onStartEvaluationWithWord}
+                      onStartEvaluationWithWord={handleWordClick}
                       fallbackLearningLanguageName={word.language1Name}
                       fallbackKnownLanguageName={word.language2Name}
                     />

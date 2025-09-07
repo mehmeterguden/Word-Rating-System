@@ -9,6 +9,7 @@ const DebugPage: React.FC = () => {
     uniqueWords: number;
     duplicates: number;
     duplicateGroups: { [key: string]: Word[] };
+    duplicateGroupsBySet: { [setId: string]: { [key: string]: Word[] } };
   } | null>(null);
 
   useEffect(() => {
@@ -42,9 +43,9 @@ const DebugPage: React.FC = () => {
       const words: Word[] = JSON.parse(wordsData);
       const wordGroups: { [key: string]: Word[] } = {};
       
-      // Group words by text1 and text2 combination
+      // Group words by text1, text2, and setId combination
       words.forEach(word => {
-        const key = `${word.text1}|${word.text2}`;
+        const key = `${word.text1}|${word.text2}|${word.setId}`;
         if (!wordGroups[key]) {
           wordGroups[key] = [];
         }
@@ -63,11 +64,22 @@ const DebugPage: React.FC = () => {
       const uniqueWords = Object.keys(wordGroups).length;
       const duplicates = Object.values(duplicateGroups).reduce((acc, group) => acc + group.length - 1, 0);
 
+      // Group duplicates by set
+      const duplicateGroupsBySet: { [setId: string]: { [key: string]: Word[] } } = {};
+      Object.entries(duplicateGroups).forEach(([key, group]) => {
+        const setId = group[0].setId;
+        if (!duplicateGroupsBySet[setId]) {
+          duplicateGroupsBySet[setId] = {};
+        }
+        duplicateGroupsBySet[setId][key] = group;
+      });
+
       setDuplicateStats({
         totalWords,
         uniqueWords,
         duplicates,
-        duplicateGroups
+        duplicateGroups,
+        duplicateGroupsBySet
       });
     } catch (error) {
       console.error('Error analyzing duplicates:', error);
@@ -290,33 +302,44 @@ const DebugPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Duplicate Groups */}
-              {Object.keys(duplicateStats.duplicateGroups).length > 0 && (
+              {/* Duplicate Groups by Set */}
+              {Object.keys(duplicateStats.duplicateGroupsBySet).length > 0 && (
                 <div>
                   <h3 className="text-lg font-semibold text-slate-800 mb-4">
-                    Duplicate Groups ({Object.keys(duplicateStats.duplicateGroups).length})
+                    Duplicate Groups by Set ({Object.keys(duplicateStats.duplicateGroups).length} total)
                   </h3>
-                  <div className="max-h-96 overflow-y-auto space-y-3 pr-2">
-                    {Object.entries(duplicateStats.duplicateGroups).map(([key, group]) => (
-                      <div key={key} className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="font-medium text-slate-800">
-                              {group[0].text1} - {group[0].text2}
+                  <div className="max-h-96 overflow-y-auto space-y-4 pr-2">
+                    {Object.entries(duplicateStats.duplicateGroupsBySet).map(([setId, setGroups]) => (
+                      <div key={setId} className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                        <div className="mb-3">
+                          <h4 className="font-semibold text-slate-800 text-sm">
+                            Set: {setId} ({Object.keys(setGroups).length} duplicate groups)
+                          </h4>
+                        </div>
+                        <div className="space-y-2">
+                          {Object.entries(setGroups).map(([key, group]) => (
+                            <div key={key} className="bg-white rounded-lg p-3 border border-slate-100">
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <div className="font-medium text-slate-800 text-sm">
+                                    {group[0].text1} - {group[0].text2}
+                                  </div>
+                                  <div className="text-xs text-slate-600 mt-1">
+                                    {group.length} copies
+                                  </div>
+                                  <div className="text-xs text-slate-500 mt-1">
+                                    IDs: {group.map(w => w.id).join(', ')}
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => removeSpecificDuplicates(key)}
+                                  className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs flex-shrink-0 ml-3"
+                                >
+                                  Remove {group.length - 1} Duplicate{group.length - 1 > 1 ? 's' : ''}
+                                </button>
+                              </div>
                             </div>
-                            <div className="text-sm text-slate-600 mt-1">
-                              {group.length} copies • Set: {group[0].setId}
-                            </div>
-                            <div className="text-xs text-slate-500 mt-1">
-                              IDs: {group.map(w => w.id).join(', ')}
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => removeSpecificDuplicates(key)}
-                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm flex-shrink-0 ml-3"
-                          >
-                            Remove {group.length - 1} Duplicate{group.length - 1 > 1 ? 's' : ''}
-                          </button>
+                          ))}
                         </div>
                       </div>
                     ))}
