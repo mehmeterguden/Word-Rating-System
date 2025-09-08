@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Page, Word, WordSet } from '../types';
 
 interface NavigationProps {
   currentPage: Page;
-  setCurrentPage: (page: Page) => void;
   words: Word[];
   onStartEvaluation: () => void;
   wordSets: WordSet[];
@@ -14,7 +14,6 @@ interface NavigationProps {
 
 const Navigation: React.FC<NavigationProps> = ({ 
   currentPage, 
-  setCurrentPage, 
   words, 
   onStartEvaluation,
   wordSets,
@@ -22,6 +21,7 @@ const Navigation: React.FC<NavigationProps> = ({
   onSetActive,
   developerMode = false
 }) => {
+  const navigate = useNavigate();
   const [showSetSelector, setShowSetSelector] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const unevaluatedCount = words.filter(word => !word.isEvaluated).length;
@@ -52,7 +52,7 @@ const Navigation: React.FC<NavigationProps> = ({
           {/* Left side - Navigation buttons */}
           <div className="flex space-x-1">
             <button
-              onClick={() => setCurrentPage('home')}
+              onClick={() => navigate('/home')}
               className={`px-6 py-4 text-sm font-medium transition-all duration-200 rounded-xl ${
                 currentPage === 'home'
                   ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg transform scale-105'
@@ -67,7 +67,7 @@ const Navigation: React.FC<NavigationProps> = ({
               </div>
             </button>
             <button
-              onClick={() => setCurrentPage('add')}
+              onClick={() => navigate('/add')}
               className={`px-6 py-4 text-sm font-medium transition-all duration-200 rounded-xl ${
                 currentPage === 'add'
                   ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg transform scale-105'
@@ -82,7 +82,7 @@ const Navigation: React.FC<NavigationProps> = ({
               </div>
             </button>
             <button
-              onClick={() => setCurrentPage('sets')}
+              onClick={() => navigate('/sets')}
               className={`px-6 py-4 text-sm font-medium transition-all duration-200 rounded-xl ${
                 currentPage === 'sets'
                   ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg transform scale-105'
@@ -120,7 +120,7 @@ const Navigation: React.FC<NavigationProps> = ({
               </div>
             </button>
             <button
-              onClick={() => setCurrentPage('study')}
+              onClick={() => navigate('/study')}
               disabled={evaluatedCount === 0}
               className={`px-6 py-4 text-sm font-medium transition-all duration-200 rounded-xl ${
                 evaluatedCount === 0
@@ -143,7 +143,7 @@ const Navigation: React.FC<NavigationProps> = ({
               </div>
             </button>
             <button
-              onClick={() => setCurrentPage('settings')}
+              onClick={() => navigate('/settings')}
               className={`px-6 py-4 text-sm font-medium transition-all duration-200 rounded-xl ${
                 currentPage === 'settings'
                   ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg transform scale-105'
@@ -251,7 +251,7 @@ const Navigation: React.FC<NavigationProps> = ({
                   <div className="mt-4 pt-4 border-t border-gray-200">
                     <button
                       onClick={() => {
-                        setCurrentPage('sets');
+                        navigate('/sets');
                         setShowSetSelector(false);
                       }}
                       className="w-full px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg border border-blue-200 hover:border-blue-300 transition-all duration-200 font-medium"

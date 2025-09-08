@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import Header from './components/Header';
 import Navigation from './components/Navigation';
 import Home from './pages/Home';
@@ -16,9 +16,14 @@ import { useWordSets } from './hooks/useWordSets';
 import { Page, Word } from './types';
 import { registerModelSwitchCallback } from './utils/ai';
 import { displayLevelToScore } from './utils/studyAlgorithm';
+import { migrateCacheToNewFormat } from './utils/imageApi';
 import ModelSwitchToast from './components/ModelSwitchToast';
 
-function App() {
+function AppContent() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const currentPage = location.pathname.substring(1) as Page || 'home';
+  
   const [developerMode, setDeveloperMode] = useState<boolean>(() => {
     try {
       return localStorage.getItem('word-rating-system-developer-mode') === 'true';
@@ -100,6 +105,11 @@ function App() {
     }
   }, [setsLoaded, wordsLoaded]);
 
+  // Cache migration on app start
+  useEffect(() => {
+    migrateCacheToNewFormat();
+  }, []);
+
   // Register model switch callback
   useEffect(() => {
     registerModelSwitchCallback((fromModel, toModel, reason) => {
@@ -151,20 +161,21 @@ function App() {
     
     if (activeSetId) {
       addBilingualWords(wordPairs, activeSetId);
-      console.log('🏠 App: addBilingualWords called, redirecting to home');
+      console.log('🏠 App: addBilingualWords called, staying on Add Words page');
     } else {
       console.error('🏠 App: No active set selected');
     }
   };
 
   return (
-    <Router>
-      <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50">
         <Header 
           words={words}
         />
         <Navigation 
+          currentPage={currentPage}
           words={words} 
+          onStartEvaluation={() => navigate('/evaluate')}
           wordSets={wordSets}
           activeSetId={activeSetId}
           onSetActive={setActiveSet}
@@ -173,7 +184,8 @@ function App() {
         
         <main className="py-8">
           <Routes>
-            <Route path="/" element={
+            <Route path="/" element={<Navigate to="/home" replace />} />
+            <Route path="/home" element={
               <Home 
                 words={words}
                 onUpdateDifficulty={(id, difficulty) => {
@@ -208,6 +220,8 @@ function App() {
               <Study 
                 words={words}
                 updateDifficulty={updateDifficulty}
+                sourceLanguageName={defaultLanguage1}
+                targetLanguageName={defaultLanguage2}
               />
             } />
             
@@ -231,8 +245,6 @@ function App() {
             {developerMode && (
               <Route path="/debug" element={<DebugPage />} />
             )}
-            
-            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
 
@@ -269,6 +281,13 @@ function App() {
           onClose={() => setModelSwitchToast(prev => ({ ...prev, isVisible: false }))}
         />
       </div>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 }

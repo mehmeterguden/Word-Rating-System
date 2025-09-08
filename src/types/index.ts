@@ -42,6 +42,13 @@ export interface AiResult {
   pronunciation?: string;
   alternativePronunciation?: string;
   cefrLevel?: string;
+  verbForms?: {
+    infinitive: string;
+    past: string;
+    pastParticiple: string;
+    presentParticiple: string;
+    thirdPersonSingular: string;
+  };
   examples?: Array<{ sentence: string; translation?: string }>;
   synonyms?: Array<{ word: string; isExact: boolean }>;
   antonyms?: Array<{ word: string; isExact: boolean }>;
@@ -60,4 +67,20 @@ export interface DifficultyInfo {
   label: string;
   color: string;
   bgColor: string;
+}
+
+// Word Translation Types
+export interface TranslationResult {
+  originalWord: string;
+  translation: string;
+  confidence: 'high' | 'medium' | 'low';
+  alternatives?: string[]; // Alternative translations
+  context?: string; // Usage context or note
+}
+
+export interface TranslationResponse {
+  translations: TranslationResult[];
+  separator: string;
+  formattedText: string; // Ready-to-use formatted text with separator
+  prompt?: string; // The prompt that was sent to AI (optional)
 }

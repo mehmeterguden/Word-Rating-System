@@ -19,6 +19,13 @@ export interface AiResult {
   pronunciation?: string;
   alternativePronunciation?: string;
   cefrLevel?: string; // Added CEFR level
+  verbForms?: {
+    infinitive: string;
+    past: string;
+    pastParticiple: string;
+    presentParticiple: string;
+    thirdPersonSingular: string;
+  };
   examples?: Array<{ sentence: string; translation?: string }>;
   synonyms?: Array<{ word: string; isExact: boolean }>;
   antonyms?: Array<{ word: string; isExact: boolean }>;
@@ -26,13 +33,29 @@ export interface AiResult {
   wordId?: number; // To track which word this result belongs to
 }
 
-const MODELS = [
+const DEFAULT_MODELS = [
   'gemini-2.5-flash-lite', 
   'gemini-2.5-flash',
   'gemini-2.0-flash',
   'gemini-2.0-flash-lite', 
   'gemini-2.5-pro', 
 ];
+
+// Get user selected model from localStorage
+const getUserSelectedModel = (): string => {
+  try {
+    return localStorage.getItem('word-rating-system-ai-model') || 'gemini-2.5-flash-lite';
+  } catch {
+    return 'gemini-2.5-flash-lite';
+  }
+};
+
+// Get models array with user selected model first
+const getModelsArray = (): string[] => {
+  const userSelected = getUserSelectedModel();
+  const otherModels = DEFAULT_MODELS.filter(model => model !== userSelected);
+  return [userSelected, ...otherModels];
+};
 
 // Keep track of which models have been tried
 let triedModels = new Set<string>();
@@ -77,11 +100,18 @@ const buildPrompt = ({ word, sourceLanguageName, examplesLanguageName, explanati
   const outputSchema = `
 Return ONLY valid JSON with this structure:
 {
-  "definition": string,              // concise, in ${explanationLanguageName}
+  "definition": string,              // concise definition in ${explanationLanguageName}
   "partOfSpeech": string,           // e.g., noun/verb/adjective
   "pronunciation": string,          // IPA pronunciation, e.g., /ˈkɒn.tɪn.u.eɪ.tʃər/
   "alternativePronunciation": string, // Alternative pronunciation, e.g., "duh · mand"
   "cefrLevel": string,             // CEFR level, e.g., "A1", "B2", "C1"
+  "verbForms": {                    // ONLY include if partOfSpeech is "verb"
+    "infinitive": string,           // base form (e.g., "go")
+    "past": string,                 // past tense (e.g., "went")
+    "pastParticiple": string,       // past participle (e.g., "gone")
+    "presentParticiple": string,    // present participle/gerund (e.g., "going")
+    "thirdPersonSingular": string   // 3rd person singular (e.g., "goes")
+  },
   "examples": [                     // 3-5 examples
     { "sentence": string, "translation": string } // IMPORTANT: wrap every occurrence of the target word in the sentence with [[w]] and [[/w]] markers.
   ],
@@ -103,6 +133,7 @@ Return ONLY valid JSON with this structure:
          - Realistic CEFR level (A1 for basic words like "hello", "cat"; A2 for common words like "house", "work"; B1 for intermediate words like "achieve", "consider"; B2 for advanced words like "accomplish", "endeavor"; C1 for complex words like "arbitrary", "elaborate"; C2 for very advanced words like "ubiquitous", "ephemeral")
          - Pronunciation in IPA (International Phonetic Alphabet) if the word is in English or another language where IPA is commonly used
          - Alternative pronunciation in a more readable format (e.g., "duh · mand" for "demand")
+         - If the word is a verb, include all verb forms: infinitive, past tense, past participle, present participle, and third person singular
          - 3-5 graded example sentences (from easy to harder) in ${examplesLanguageName} with ${explanationLanguageName} translations where needed. In each example sentence, wrap every occurrence of "${word}" with [[w]] and [[/w]] markers for highlighting.
          - 5-10 synonyms in ${examplesLanguageName} (mark exact synonyms vs similar meanings)
          - 5-10 antonyms in ${examplesLanguageName} (mark exact antonyms vs opposite meanings)
@@ -119,17 +150,26 @@ Return ONLY valid JSON with this structure:
          Keep it concise and helpful. Provide the explanation in ${explanationLanguageName}. The user's question is: ${userQuestion ?? ''}`;
 
   return `
-You are a great language tutor.
-- Examples must be in ${examplesLanguageName}. Explanations/definitions/tips must be in ${explanationLanguageName}${targetLanguageCode ? ` (target code: ${targetLanguageCode})` : ''}.
-- Include ${sourceLanguageName} items (e.g., synonyms) when asked, but keep explanations in ${explanationLanguageName}.
-- Be concise, accurate, and helpful.
+You are an expert language tutor specializing in vocabulary learning and word analysis.
 
-Task: ${task}
+LANGUAGE REQUIREMENTS:
+- Examples must be in ${examplesLanguageName}
+- Explanations/definitions/tips must be in ${explanationLanguageName}${targetLanguageCode ? ` (target code: ${targetLanguageCode})` : ''}
+- Include ${sourceLanguageName} items (e.g., synonyms) when asked, but keep explanations in ${explanationLanguageName}
 
-Constraints:
-- Keep definitions and tips short and practical.
-- Provide example sentences that are natural and level-appropriate.
-- Output must be STRICT JSON. Do not include code fences or extra text.
+TASK: ${task}
+
+QUALITY STANDARDS:
+- Be concise, accurate, and pedagogically sound
+- Keep definitions and tips short and practical
+- Provide example sentences that are natural and level-appropriate
+- Use **bold** formatting for emphasis when needed
+- Ensure all word highlighting markers [[w]] and [[/w]] are properly placed
+
+OUTPUT FORMAT:
+- Return ONLY valid JSON
+- Do not include code fences, markdown, or extra text
+- Follow the exact schema structure provided
 
 ${outputSchema}
 `;
@@ -142,6 +182,9 @@ export async function generateAiContent(params: GenerateParams): Promise<AiResul
   }
 
   const prompt = buildPrompt(params);
+  
+  // Get models array with user selected model first
+  const MODELS = getModelsArray();
   
   // Try models in order until one works
   for (const model of MODELS) {
@@ -285,6 +328,9 @@ User: ${userMessage}
 
 AI Assistant:`;
   
+  // Get models array with user selected model first
+  const MODELS = getModelsArray();
+  
   // Try models in order until one works
   for (const model of MODELS) {
     if (triedModels.has(model)) continue;
@@ -382,6 +428,9 @@ Your greeting should:
 
 Make it feel friendly and helpful.`;
   
+  // Get models array with user selected model first
+  const MODELS = getModelsArray();
+  
   // Try models in order until one works
   for (const model of MODELS) {
     if (triedModels.has(model)) continue;
@@ -461,6 +510,9 @@ export async function generateDefinitionOnly(params: {
 - Avoid extra commentary, focus on the word itself.
 Return ONLY valid JSON like: { "definition": string }`;
 
+  // Get models array with user selected model first
+  const MODELS = getModelsArray();
+  
   // Try models in order until one works
   for (const model of MODELS) {
     if (triedModels.has(model)) continue;

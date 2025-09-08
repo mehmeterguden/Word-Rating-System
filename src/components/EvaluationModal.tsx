@@ -3,6 +3,7 @@ import { generateAiContent, AiResult } from '../utils/ai';
 import { Word, DifficultyLevel } from '../types';
 import { getLanguageByName, LANGUAGES, getUniqueLanguages } from '../utils/languages';
 import { generateChatReply, generateChatGreeting, generateDefinitionOnly } from '../utils/ai';
+import ImageModal from './ImageModal';
 // Chat is now integrated into the AI panel; no separate modal
 
 interface EvaluationModalProps {
@@ -48,6 +49,19 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
   ]);
   const [chatInput, setChatInput] = useState('');
   const [localFormatReversed, setLocalFormatReversed] = useState(false);
+  
+  // Image modal states
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [currentImageWord, setCurrentImageWord] = useState('');
+  const [currentImageLanguage, setCurrentImageLanguage] = useState('');
+  
+  // Resim modal'ını aç
+  const handleImageClick = (wordText: string, languageName?: string) => {
+    setCurrentImageWord(wordText);
+    setCurrentImageLanguage(languageName || '');
+    setShowImageModal(true);
+  };
+  
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatMessages.length]);
 
@@ -644,16 +658,27 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
                 <h3 className="text-3xl font-bold text-gray-800 mb-2">
                   {localFormatReversed ? currentWord.text2 : currentWord.text1}
                 </h3>
-                      <button
-                        onClick={() => speakWord(localFormatReversed ? currentWord.text2 : currentWord.text1, localFormatReversed ? sourceLanguageName : targetLanguageName)}
-                        className="mb-2 p-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 shadow-sm hover:shadow transition"
-                        title={`Kelimeyi dinle (${localFormatReversed ? sourceLanguageName : targetLanguageName})`}
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5l-4 4H4v6h3l4 4V5z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.54 8.46a5 5 0 010 7.07M17.95 6.05a8 8 0 010 11.31" />
-                        </svg>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => speakWord(localFormatReversed ? currentWord.text2 : currentWord.text1, localFormatReversed ? sourceLanguageName : targetLanguageName)}
+                          className="mb-2 p-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 shadow-sm hover:shadow transition"
+                          title={`Kelimeyi dinle (${localFormatReversed ? sourceLanguageName : targetLanguageName})`}
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5l-4 4H4v6h3l4 4V5z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.54 8.46a5 5 0 010 7.07M17.95 6.05a8 8 0 010 11.31" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handleImageClick(localFormatReversed ? currentWord.text2 : currentWord.text1, localFormatReversed ? sourceLanguageName : targetLanguageName)}
+                          className="mb-2 p-2 rounded-xl bg-purple-100 hover:bg-purple-200 border border-purple-200 text-purple-700 shadow-sm hover:shadow transition"
+                          title="Show image"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                     
               </div>
@@ -1130,6 +1155,76 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
                             </div>
                           </div>
                         )}
+                        {/* Verb Forms */}
+                        {aiResult.verbForms && aiResult.partOfSpeech?.toLowerCase().includes('verb') && (
+                          <div className="rounded-xl border border-purple-200 p-4 bg-gradient-to-br from-purple-50 to-white shadow-sm">
+                            <div className="flex items-center gap-2 mb-3">
+                              <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                              </div>
+                              <div className="text-sm font-semibold text-purple-700">Verb Forms</div>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-2">
+                              {/* 1st Form - Infinitive */}
+                              <div className="bg-white/60 rounded-lg p-2 border border-purple-100">
+                                <div className="flex items-center gap-1 mb-1">
+                                  <div className="w-4 h-4 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-xs font-bold">1</div>
+                                  <span className="text-xs font-medium text-purple-700">Infinitive</span>
+                                </div>
+                                <div className="text-sm font-bold text-slate-800">
+                                  {aiResult.verbForms.infinitive}
+                                </div>
+                              </div>
+
+                              {/* 2nd Form - Past */}
+                              <div className="bg-white/60 rounded-lg p-2 border border-purple-100">
+                                <div className="flex items-center gap-1 mb-1">
+                                  <div className="w-4 h-4 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-xs font-bold">2</div>
+                                  <span className="text-xs font-medium text-purple-700">Past</span>
+                                </div>
+                                <div className="text-sm font-bold text-slate-800">
+                                  {aiResult.verbForms.past}
+                                </div>
+                              </div>
+
+                              {/* 3rd Form - Past Participle */}
+                              <div className="bg-white/60 rounded-lg p-2 border border-purple-100">
+                                <div className="flex items-center gap-1 mb-1">
+                                  <div className="w-4 h-4 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-xs font-bold">3</div>
+                                  <span className="text-xs font-medium text-purple-700">Past Part.</span>
+                                </div>
+                                <div className="text-sm font-bold text-slate-800">
+                                  {aiResult.verbForms.pastParticiple}
+                                </div>
+                              </div>
+
+                              {/* 4th Form - Present Participle */}
+                              <div className="bg-white/60 rounded-lg p-2 border border-purple-100">
+                                <div className="flex items-center gap-1 mb-1">
+                                  <div className="w-4 h-4 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-xs font-bold">4</div>
+                                  <span className="text-xs font-medium text-purple-700">Present Part.</span>
+                                </div>
+                                <div className="text-sm font-bold text-slate-800">
+                                  {aiResult.verbForms.presentParticiple}
+                                </div>
+                              </div>
+
+                              {/* 5th Form - 3rd Person Singular */}
+                              <div className="bg-white/60 rounded-lg p-2 border border-purple-100 col-span-2">
+                                <div className="flex items-center gap-1 mb-1">
+                                  <div className="w-4 h-4 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-xs font-bold">5</div>
+                                  <span className="text-xs font-medium text-purple-700">3rd Person Singular</span>
+                                </div>
+                                <div className="text-sm font-bold text-slate-800">
+                                  {aiResult.verbForms.thirdPersonSingular}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                         {aiResult.examples && aiResult.examples.length > 0 && (
                           <div className="rounded-2xl border border-emerald-200 p-4 bg-gradient-to-br from-emerald-50 to-white shadow-sm">
                             <div className="flex items-center gap-2 mb-2">
@@ -1244,6 +1339,14 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
         </div>
       </div>
       {/* Chat integrated in AI panel; no separate modal */}
+      
+      {/* Image Modal */}
+      <ImageModal
+        word={currentImageWord}
+        languageName={currentImageLanguage}
+        isOpen={showImageModal}
+        onClose={() => setShowImageModal(false)}
+      />
     </div>
   );
 };

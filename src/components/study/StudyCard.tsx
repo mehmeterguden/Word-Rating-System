@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getDifficultyColor, getDifficultyLabel } from '../../utils/studyAlgorithm';
+import { getLanguageByName } from '../../utils/languages';
+import { getWordImage, preloadImage, getRemainingLimits } from '../../utils/imageApi';
 
 interface StudyCardProps {
   word: {
@@ -21,6 +23,8 @@ interface StudyCardProps {
   hasPrevious?: boolean;
   canRollback?: boolean;
   isSessionComplete?: boolean;
+  showFeedback?: boolean;
+  onToggleFeedback?: () => void;
   lastScoreChange?: {
     previousScore: number;
     newScore: number;
@@ -74,63 +78,93 @@ const StudyCard: React.FC<StudyCardProps> = ({
   hasPrevious = false,
   canRollback = false,
   isSessionComplete = false,
+  showFeedback = true,
+  onToggleFeedback,
   lastScoreChange
 }) => {
   const [isFlipped, setIsFlipped] = useState(false);
   const [showAnimation, setShowAnimation] = useState(false);
-  const [showFeedback, setShowFeedback] = useState(false);
   const [showSecondWord, setShowSecondWord] = useState(false);
+  const [isFlippedMode, setIsFlippedMode] = useState(false); // false = text1->text2, true = text2->text1
   const [startTime, setStartTime] = useState<number | null>(null);
   const [responseTime, setResponseTime] = useState<number | null>(null);
+  
+  // Image states
+  const [showImage, setShowImage] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageSource, setImageSource] = useState<string>('');
+  const [imageLoading, setImageLoading] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const [apiLimits, setApiLimits] = useState({ unsplash: 50, pixabay: 5000 });
 
   const difficultyColor = getDifficultyColor(word.difficulty);
   const difficultyLabel = getDifficultyLabel(word.difficulty);
+
+  // Audio pronunciation function
+  const speakWord = (text: string, languageName?: string) => {
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      
+      // Set language if available
+      if (languageName) {
+        const language = getLanguageByName(languageName);
+        if (language) {
+          utterance.lang = language.code;
+        }
+      }
+      
+      // Set voice properties for better pronunciation
+      utterance.rate = 0.8;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+      
+      // Try to find a voice that matches the language
+      const voices = speechSynthesis.getVoices();
+      const preferredVoice = voices.find(voice => 
+        languageName && getLanguageByName(languageName) ? 
+        voice.lang.startsWith(getLanguageByName(languageName)?.code || 'en') : 
+        voice.lang.startsWith('en')
+      );
+      
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
+      }
+      
+      speechSynthesis.speak(utterance);
+    } else {
+      console.warn('Speech synthesis not supported');
+    }
+  };
 
   // Reset flip state when word changes
   useEffect(() => {
     setIsFlipped(false);
     setShowAnimation(false);
+    setShowSecondWord(false); // Hide second word when moving to next word
     setStartTime(Date.now());
     setResponseTime(null);
+    // Reset image states when word changes
+    setShowImage(false);
+    setImageUrl(null);
+    setImageSource('');
+    setImageError(false);
+    setImageLoading(false);
     // Don't close feedback when word changes - let it stay persistent
   }, [word.id]);
 
-  // Show feedback when score change is available
+  // Update API limits periodically
   useEffect(() => {
-    if (lastScoreChange) {
-      setShowFeedback(true);
-      // Don't auto-hide - let user close manually or wait for new feedback
-    }
-  }, [lastScoreChange]);
-
-  // Keep feedback visible when showResult changes (but don't close it)
-  useEffect(() => {
-    if (showResult && lastScoreChange) {
-      setShowFeedback(true);
-    }
-  }, [showResult, lastScoreChange]);
-
-  // Reset feedback only when component unmounts or session ends
-  useEffect(() => {
-    return () => {
-      // Cleanup function - only reset when component unmounts
+    const updateLimits = () => {
+      setApiLimits(getRemainingLimits());
     };
+    
+    updateLimits(); // Initial load
+    const interval = setInterval(updateLimits, 5000); // Update every 5 seconds
+    
+    return () => clearInterval(interval);
   }, []);
 
-  // Reset feedback only when session ends (not when word changes)
-  // But keep feedback open if session is complete
-  useEffect(() => {
-    if (!showResult && !lastScoreChange && !isSessionComplete) {
-      setShowFeedback(false);
-    }
-  }, [showResult, lastScoreChange, isSessionComplete]);
-
-  // Keep feedback visible when word changes (don't close it)
-  useEffect(() => {
-    if (lastScoreChange) {
-      setShowFeedback(true);
-    }
-  }, [lastScoreChange]);
+  // Feedback visibility is now controlled by parent component via showFeedback prop
 
   // Keyboard event handlers
   useEffect(() => {
@@ -207,6 +241,54 @@ const StudyCard: React.FC<StudyCardProps> = ({
     }
   };
 
+  const handleFlipMode = () => {
+    setIsFlippedMode(!isFlippedMode);
+    setShowSecondWord(false); // Hide the revealed word when flipping mode
+  };
+
+  // Image loading function
+  const handleImageClick = async (forceReload = false) => {
+    if (imageUrl && !forceReload) {
+      setShowImage(true);
+      return;
+    }
+
+    setImageLoading(true);
+    setImageError(false);
+    
+    if (forceReload) {
+      setImageUrl(null);
+      setImageSource('');
+    }
+
+    try {
+      const currentWord = isFlippedMode ? word.text2! : word.text1;
+      const result = await getWordImage(currentWord, forceReload);
+      
+      if (result.url) {
+        // Resmi önceden yükle
+        const loaded = await preloadImage(result.url);
+        
+        if (loaded) {
+          setImageUrl(result.url);
+          setImageSource(result.source);
+          setShowImage(true);
+          // API limit'lerini güncelle
+          setApiLimits(getRemainingLimits());
+        } else {
+          setImageError(true);
+        }
+      } else {
+        setImageError(true);
+      }
+    } catch (error) {
+      console.error('Error loading image:', error);
+      setImageError(true);
+    } finally {
+      setImageLoading(false);
+    }
+  };
+
   return (
     <div className="max-w-2xl mx-auto">
       {/* Advanced Developer Debug Panel */}
@@ -219,9 +301,9 @@ const StudyCard: React.FC<StudyCardProps> = ({
           }`}>
             {/* Close Button */}
             <button
-              onClick={() => setShowFeedback(false)}
+              onClick={onToggleFeedback}
               className="close-btn absolute top-3 right-3 w-7 h-7 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center transition-colors group"
-              title="Close debug panel"
+              title="Hide feedback panel"
             >
               <svg className="w-4 h-4 text-slate-300 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -581,6 +663,34 @@ const StudyCard: React.FC<StudyCardProps> = ({
           </div>
         )}
 
+        {/* Show Feedback Button when feedback is hidden */}
+        {lastScoreChange && !showFeedback && onToggleFeedback && (
+          <div className="fixed bottom-4 left-4 z-50">
+            <button
+              onClick={onToggleFeedback}
+              className={`group relative px-3 py-2 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center space-x-2 ${
+                lastScoreChange.isKnown 
+                  ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white' 
+                  : 'bg-gradient-to-r from-rose-500 to-red-600 text-white'
+              }`}
+              title="Show feedback panel"
+            >
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                lastScoreChange.isKnown ? 'bg-emerald-600' : 'bg-rose-600'
+              }`}>
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {lastScoreChange.isKnown ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  )}
+                </svg>
+              </div>
+              <span className="text-sm">Feedback</span>
+            </button>
+          </div>
+        )}
+
         {/* Main Card */}
         <div 
           className={`relative bg-gradient-to-br from-white/95 via-blue-50/50 to-indigo-50/50 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/40 overflow-hidden transition-all duration-300 ${
@@ -603,13 +713,34 @@ const StudyCard: React.FC<StudyCardProps> = ({
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-slate-800">Study Mode</h3>
-                  <p className="text-sm text-slate-600">{word.language1Name || 'Target'} → {word.language2Name || 'Known'}</p>
+                  <p className="text-sm text-slate-600">
+                    {isFlippedMode ? 
+                      `${word.language2Name || 'Known'} → ${word.language1Name || 'Target'}` : 
+                      `${word.language1Name || 'Target'} → ${word.language2Name || 'Known'}`
+                    }
+                  </p>
                 </div>
               </div>
               
-              {/* Difficulty Badge */}
-              <div className={`px-3 py-1.5 rounded-lg font-semibold text-sm bg-${difficultyColor}-100 text-${difficultyColor}-700 ring-1 ring-${difficultyColor}-200`}>
-                {difficultyLabel}
+              <div className="flex items-center gap-3">
+                {/* Flip Mode Button */}
+                <button
+                  onClick={handleFlipMode}
+                  className="group relative px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 active:scale-95 flex items-center space-x-2"
+                  title="Switch study direction"
+                >
+                  <div className="p-1 bg-white/20 rounded-lg group-hover:bg-white/30 transition-colors duration-300">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                    </svg>
+                  </div>
+                  <span className="text-sm font-bold">Flip</span>
+                </button>
+                
+                {/* Difficulty Badge */}
+                <div className={`px-3 py-1.5 rounded-lg font-semibold text-sm bg-${difficultyColor}-100 text-${difficultyColor}-700 ring-1 ring-${difficultyColor}-200`}>
+                  {difficultyLabel}
+                </div>
               </div>
             </div>
           </div>
@@ -628,11 +759,40 @@ const StudyCard: React.FC<StudyCardProps> = ({
             </div>
             
             <div className="relative z-10 text-center">
-              <div className="text-5xl font-bold text-white mb-4 drop-shadow-2xl group-hover:scale-105 transition-transform duration-300">
-                {word.text1}
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <div className="text-5xl font-bold text-white drop-shadow-2xl group-hover:scale-105 transition-transform duration-300">
+                  {isFlippedMode ? word.text2 : word.text1}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => speakWord(isFlippedMode ? word.text2! : word.text1, isFlippedMode ? word.language2Name : word.language1Name)}
+                    className="p-2 rounded-full bg-white/20 hover:bg-white/30 text-white transition-all duration-200 hover:scale-110 active:scale-95 shadow-lg"
+                    title="Listen pronunciation"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => handleImageClick()}
+                    disabled={imageLoading}
+                    className="p-2 rounded-full bg-white/20 hover:bg-white/30 text-white transition-all duration-200 hover:scale-110 active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Show image"
+                  >
+                    {imageLoading ? (
+                      <svg className="w-6 h-6 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    ) : (
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
               </div>
               <div className="text-white/90 font-semibold text-xl tracking-wide">
-                {word.language1Name || 'English'}
+                {isFlippedMode ? (word.language2Name || 'Türkçe') : (word.language1Name || 'English')}
               </div>
             </div>
             
@@ -658,21 +818,36 @@ const StudyCard: React.FC<StudyCardProps> = ({
                   </div>
                   
                   <div className="relative z-10 text-center">
-                    <div className={`text-5xl font-bold mb-4 drop-shadow-2xl group-hover:scale-105 transition-transform duration-300 ${
-                      showSecondWord ? 'text-white' : 'text-slate-200'
+                    <div className={`flex items-center justify-center gap-3 mb-4 ${
+                      showSecondWord ? '' : 'opacity-50'
                     }`}>
-                      {showSecondWord ? (word.text2 || 'No translation') : (
-                        <div className="flex items-center justify-center space-x-2">
-                          {Array.from({ length: word.text2?.length || 6 }, (_, i) => (
-                            <div key={i} className="w-3 h-10 bg-slate-300 rounded-full animate-pulse" style={{animationDelay: `${i * 0.1}s`}}></div>
-                          ))}
-                        </div>
+                      <div className={`text-5xl font-bold drop-shadow-2xl group-hover:scale-105 transition-transform duration-300 ${
+                        showSecondWord ? 'text-white' : 'text-slate-200'
+                      }`}>
+                        {showSecondWord ? (isFlippedMode ? (word.text1 || 'No translation') : (word.text2 || 'No translation')) : (
+                          <div className="flex items-center justify-center space-x-2">
+                            {Array.from({ length: (isFlippedMode ? word.text1?.length : word.text2?.length) || 6 }, (_, i) => (
+                              <div key={i} className="w-3 h-10 bg-slate-300 rounded-full animate-pulse" style={{animationDelay: `${i * 0.1}s`}}></div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      {showSecondWord && (isFlippedMode ? word.text1 : word.text2) && (
+                        <button
+                          onClick={() => speakWord(isFlippedMode ? word.text1! : word.text2!, isFlippedMode ? word.language1Name : word.language2Name)}
+                          className="p-2 rounded-full bg-white/20 hover:bg-white/30 text-white transition-all duration-200 hover:scale-110 active:scale-95 shadow-lg"
+                          title="Listen pronunciation"
+                        >
+                          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+                          </svg>
+                        </button>
                       )}
                     </div>
                     <div className={`font-semibold text-xl tracking-wide ${
                       showSecondWord ? 'text-white/90' : 'text-slate-300'
                     }`}>
-                      {word.language2Name || 'Türkçe'}
+                      {isFlippedMode ? (word.language1Name || 'English') : (word.language2Name || 'Türkçe')}
                     </div>
                     {!showSecondWord && (
                       <div className="text-slate-300 text-sm mt-3 font-medium">
@@ -787,6 +962,104 @@ const StudyCard: React.FC<StudyCardProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Image Modal */}
+      {showImage && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-4xl max-h-[90vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b border-slate-200">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800">
+                    {isFlippedMode ? word.text2 : word.text1}
+                  </h3>
+                  <p className="text-sm text-slate-500">
+                    {isFlippedMode ? (word.language2Name || 'Türkçe') : (word.language1Name || 'English')}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleImageClick(true)}
+                  disabled={imageLoading}
+                  className="p-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Reload image"
+                >
+                  <svg className={`w-4 h-4 ${imageLoading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => setShowImage(false)}
+                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            {/* Modal Content */}
+            <div className="p-4">
+              {imageError ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                    <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.664-.833-2.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-2">Image not found</h3>
+                  <p className="text-slate-500 mb-4">Sorry, we couldn't find an image for this word.</p>
+                  <button
+                    onClick={() => setShowImage(false)}
+                    className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              ) : imageUrl ? (
+                <div className="relative">
+                  <img
+                    src={imageUrl}
+                    alt={isFlippedMode ? word.text2 : word.text1}
+                    className="w-full h-auto rounded-lg shadow-lg"
+                    onError={() => setImageError(true)}
+                  />
+                  <div className="absolute bottom-4 right-4 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
+                    via {imageSource === 'unsplash' ? 'Unsplash' : imageSource === 'pixabay' ? 'Pixabay' : 'Cache'}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+            
+            {/* API Limits Display */}
+            <div className="px-4 py-3 bg-slate-50 border-t border-slate-200">
+              <div className="flex items-center justify-between text-xs text-slate-600">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                    <span>Unsplash: {apiLimits.unsplash}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                    <span>Pixabay: {apiLimits.pixabay}</span>
+                  </div>
+                </div>
+                <div className="text-slate-400">
+                  Daily limits
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         .preserve-3d {

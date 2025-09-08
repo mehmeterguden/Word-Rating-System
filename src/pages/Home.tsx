@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Word, DifficultyLevel } from '../types';
 import { displayLevelToScore } from '../utils/studyAlgorithm';
 import WordCard from '../components/WordCard';
+import ImageModal from '../components/ImageModal';
 
 interface HomeProps {
   words: Word[];
@@ -12,7 +13,7 @@ interface HomeProps {
 }
 
 type FilterType = 'all' | 'pending' | 'evaluated';
-type SortOption = 'az' | 'za' | 'difficultyAsc' | 'difficultyDesc';
+type SortOption = 'az' | 'za' | 'oldest' | 'newest' | 'difficultyAsc' | 'difficultyDesc';
 
 const Home: React.FC<HomeProps> = ({
   words,
@@ -29,6 +30,13 @@ const Home: React.FC<HomeProps> = ({
     navigate(`/evaluate?wordId=${word.id}`);
   };
   
+  // Handle image modal
+  const handleImageClick = (wordText: string, languageName?: string) => {
+    setCurrentImageWord(wordText);
+    setCurrentImageLanguage(languageName || '');
+    setShowImageModal(true);
+  };
+  
   const [filter, setFilter] = useState<FilterType>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [levelFilters, setLevelFilters] = useState<number[]>([]);
@@ -38,11 +46,173 @@ const Home: React.FC<HomeProps> = ({
   const sortRef = useRef<HTMLDivElement | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10); // User can change this
+  const [alertMessage, setAlertMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  
+  // Word selection states
+  const [selectedWords, setSelectedWords] = useState<Set<number>>(new Set());
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [bulkDifficulty, setBulkDifficulty] = useState<DifficultyLevel | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isSelectOpen, setIsSelectOpen] = useState(false);
+  
+  // Global image modal states
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [currentImageWord, setCurrentImageWord] = useState('');
+  const [currentImageLanguage, setCurrentImageLanguage] = useState('');
 
   // Reset to page 1 when itemsPerPage changes
   useEffect(() => {
     setCurrentPage(1);
   }, [itemsPerPage]);
+
+  // Close select dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (isSelectOpen) {
+        const target = event.target as Element;
+        if (!target.closest('.custom-select-container')) {
+          setIsSelectOpen(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isSelectOpen]);
+
+  const showAlert = (type: 'success' | 'error', message: string) => {
+    setAlertMessage({ type, message });
+    setTimeout(() => {
+      setAlertMessage(null);
+    }, 4000);
+  };
+
+  const handleRemoveWord = (id: number) => {
+    const word = words.find(w => w.id === id);
+    if (word) {
+      onRemoveWord(id);
+      showAlert('success', `"${word.text1}" word deleted successfully!`);
+    }
+  };
+
+  // Word selection functions
+  const toggleWordSelection = (wordId: number) => {
+    if (!isSelectionMode) return;
+    
+    setSelectedWords(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(wordId)) {
+        newSet.delete(wordId);
+      } else {
+        newSet.add(wordId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectionMode = () => {
+    setIsSelectionMode(!isSelectionMode);
+    setSelectedWords(new Set());
+    setBulkDifficulty(null);
+  };
+
+  const selectAllWords = () => {
+    const allWordIds = filteredWords.map(word => word.id);
+    setSelectedWords(new Set(allWordIds));
+  };
+
+  const clearSelection = () => {
+    setSelectedWords(new Set());
+  };
+
+  const applyBulkDifficulty = () => {
+    if (bulkDifficulty && selectedWords.size > 0) {
+      selectedWords.forEach(wordId => {
+        onUpdateDifficulty(wordId, bulkDifficulty);
+      });
+      showAlert('success', `${selectedWords.size} words updated to difficulty level ${bulkDifficulty}!`);
+      setSelectedWords(new Set());
+      setBulkDifficulty(null);
+    }
+  };
+
+  const deleteSelectedWords = () => {
+    if (selectedWords.size > 0) {
+      const selectedWordsList = Array.from(selectedWords);
+      selectedWordsList.forEach(wordId => {
+        onRemoveWord(wordId);
+      });
+      showAlert('success', `${selectedWords.size} words deleted successfully!`);
+      setSelectedWords(new Set());
+      setShowDeleteConfirm(false);
+    }
+  };
+
+  const handleDeleteClick = () => {
+    if (selectedWords.size > 0) {
+      setShowDeleteConfirm(true);
+    }
+  };
+
+  // Difficulty options for custom select
+  const difficultyOptions = [
+    { 
+      value: null, 
+      label: 'Not Rated', 
+      color: 'gray', 
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      )
+    },
+    { 
+      value: 1, 
+      label: 'Very Easy', 
+      color: 'emerald', 
+      icon: (
+        <div className="w-4 h-4 bg-emerald-500 rounded-full"></div>
+      )
+    },
+    { 
+      value: 2, 
+      label: 'Easy', 
+      color: 'indigo', 
+      icon: (
+        <div className="w-4 h-4 bg-indigo-500 rounded-full"></div>
+      )
+    },
+    { 
+      value: 3, 
+      label: 'Medium', 
+      color: 'amber', 
+      icon: (
+        <div className="w-4 h-4 bg-amber-500 rounded-full"></div>
+      )
+    },
+    { 
+      value: 4, 
+      label: 'Hard', 
+      color: 'orange', 
+      icon: (
+        <div className="w-4 h-4 bg-orange-500 rounded-full"></div>
+      )
+    },
+    { 
+      value: 5, 
+      label: 'Very Hard', 
+      color: 'rose', 
+      icon: (
+        <div className="w-4 h-4 bg-rose-500 rounded-full"></div>
+      )
+    }
+  ];
+
+  const getSelectedOption = () => {
+    return difficultyOptions.find(option => option.value === bulkDifficulty) || difficultyOptions[0];
+  };
 
   const sortLabel = useMemo(() => {
     switch (sortBy) {
@@ -50,6 +220,10 @@ const Home: React.FC<HomeProps> = ({
         return 'A → Z';
       case 'za':
         return 'Z → A';
+      case 'oldest':
+        return 'Oldest → Newest';
+      case 'newest':
+        return 'Newest → Oldest';
       case 'difficultyAsc':
         return 'Difficulty ↑';
       case 'difficultyDesc':
@@ -109,6 +283,10 @@ const Home: React.FC<HomeProps> = ({
           return a.text1.localeCompare(b.text1);
         case 'za':
           return b.text1.localeCompare(a.text1);
+        case 'oldest':
+          return a.id - b.id; // ID'ye göre sıralama (en eski önce)
+        case 'newest':
+          return b.id - a.id; // ID'ye göre sıralama (en yeni önce)
         case 'difficultyAsc':
           return (a.difficulty || 0) - (b.difficulty || 0);
         case 'difficultyDesc':
@@ -181,26 +359,164 @@ const Home: React.FC<HomeProps> = ({
                 </div>
               </div>
               
-              {/* Add Words Button */}
-              <Link
-                to="/add"
-                className="group relative flex items-center space-x-3 px-8 py-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-2xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:scale-105 font-bold text-lg overflow-hidden h-14"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <div className="relative flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center group-hover:bg-white/30 transition-all duration-300">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
+              {/* Action Buttons */}
+              <div className="flex items-center space-x-3">
+                {/* Selection Mode Button */}
+                <button
+                  onClick={toggleSelectionMode}
+                  className={`group relative flex items-center space-x-3 px-8 py-4 rounded-2xl transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:scale-105 font-bold text-lg overflow-hidden h-14 ${
+                    isSelectionMode 
+                      ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white ring-4 ring-green-200' 
+                      : 'bg-gradient-to-r from-indigo-500 to-blue-600 text-white hover:from-indigo-600 hover:to-blue-700'
+                  }`}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="relative flex items-center space-x-3">
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                      isSelectionMode 
+                        ? 'bg-white/20 group-hover:bg-white/30' 
+                        : 'bg-white/20 group-hover:bg-white/30'
+                    }`}>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <span className="tracking-wide">
+                      {isSelectionMode ? 'Exit Selection' : 'Select Words'}
+                    </span>
                   </div>
-                  <span className="tracking-wide">Add Words</span>
-                </div>
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-300 rounded-full animate-pulse"></div>
-              </Link>
+                  {isSelectionMode && (
+                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-300 rounded-full animate-pulse"></div>
+                  )}
+                </button>
+
+                {/* Add Words Button */}
+                <Link
+                  to="/add"
+                  className="group relative flex items-center space-x-3 px-8 py-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-2xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:scale-105 font-bold text-lg overflow-hidden h-14"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="relative flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center group-hover:bg-white/30 transition-all duration-300">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                    </div>
+                    <span className="tracking-wide">Add Words</span>
+                  </div>
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-300 rounded-full animate-pulse"></div>
+                </Link>
+              </div>
             </div>
 
           </div>
         </div>
+
+        {/* Bulk Action Panel */}
+        {isSelectionMode && (
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-2xl shadow-lg p-4 mb-6">
+            <div className="flex items-center justify-between">
+              {/* Left: Selection Info */}
+              <div className="flex items-center space-x-4">
+                <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-green-800">
+                    {selectedWords.size} word{selectedWords.size !== 1 ? 's' : ''} selected
+                  </h3>
+                </div>
+              </div>
+              
+              {/* Center: Difficulty Selector */}
+              <div className="flex items-center space-x-3">
+                <span className="text-green-800 font-semibold">Set Level:</span>
+                <div className="relative custom-select-container">
+                  <button
+                    onClick={() => setIsSelectOpen(!isSelectOpen)}
+                    className="flex items-center gap-3 px-4 py-2 bg-white border-2 border-green-300 rounded-xl hover:border-green-400 focus:ring-2 focus:ring-green-200 focus:border-green-500 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer min-w-[160px]"
+                  >
+                    <span className="text-gray-600">{getSelectedOption().icon}</span>
+                    <span className="font-medium text-gray-800">{getSelectedOption().label}</span>
+                    <svg className={`w-4 h-4 text-green-600 transition-transform duration-200 ${isSelectOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  
+                  {/* Dropdown */}
+                  {isSelectOpen && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border-2 border-green-200 rounded-xl shadow-lg z-50 overflow-hidden">
+                      {difficultyOptions.map((option) => (
+                        <button
+                          key={option.value || 'not-rated'}
+                          onClick={() => {
+                            setBulkDifficulty(option.value as DifficultyLevel | null);
+                            setIsSelectOpen(false);
+                          }}
+                          className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-green-50 transition-colors duration-200 ${
+                            bulkDifficulty === option.value ? 'bg-green-100' : ''
+                          }`}
+                        >
+                          <span className="text-gray-600">{option.icon}</span>
+                          <span className="font-medium text-gray-800">{option.label}</span>
+                          {bulkDifficulty === option.value && (
+                            <svg className="w-4 h-4 text-green-600 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Right: Action Buttons */}
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={selectAllWords}
+                  className="px-3 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 transition-all duration-200 font-semibold shadow-sm hover:shadow-md transform hover:scale-105 text-sm"
+                >
+                  Select All
+                </button>
+                <button
+                  onClick={clearSelection}
+                  className="px-3 py-2 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-lg hover:from-gray-600 hover:to-gray-700 transition-all duration-200 font-semibold shadow-sm hover:shadow-md transform hover:scale-105 text-sm"
+                >
+                  Clear
+                </button>
+                <button
+                  onClick={handleDeleteClick}
+                  disabled={selectedWords.size === 0}
+                  className="px-3 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 font-semibold shadow-sm hover:shadow-md transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none text-sm flex items-center gap-1"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Delete ({selectedWords.size})
+                </button>
+                <button
+                  onClick={applyBulkDifficulty}
+                  disabled={!bulkDifficulty || selectedWords.size === 0}
+                  className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 font-bold shadow-sm hover:shadow-md transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none text-sm"
+                >
+                  Apply
+                </button>
+                <button
+                  onClick={toggleSelectionMode}
+                  className="px-3 py-2 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-lg hover:from-gray-600 hover:to-gray-700 transition-all duration-200 font-semibold shadow-sm hover:shadow-md transform hover:scale-105 text-sm flex items-center gap-1"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Exit
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Filter Section */}
         <div className="mb-8">
@@ -339,6 +655,8 @@ const Home: React.FC<HomeProps> = ({
                       {[
                         { key: 'az', label: 'A → Z' },
                         { key: 'za', label: 'Z → A' },
+                        { key: 'oldest', label: 'Oldest → Newest' },
+                        { key: 'newest', label: 'Newest → Oldest' },
                         { key: 'difficultyAsc', label: 'Difficulty ↑' },
                         { key: 'difficultyDesc', label: 'Difficulty ↓' }
                       ].map((opt) => (
@@ -392,23 +710,44 @@ const Home: React.FC<HomeProps> = ({
                   </svg>
                 </div>
                 
-                <h2 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-blue-800 bg-clip-text text-transparent mb-4">No Words Yet</h2>
-                <p className="text-slate-600 mb-8 text-lg leading-relaxed">
-                  Start building your vocabulary collection by adding some words
-                </p>
-                
-                <div className="bg-gradient-to-r from-blue-500/10 to-indigo-500/10 p-6 rounded-2xl border border-blue-200/50 backdrop-blur-sm">
-                  <div className="flex items-center justify-center space-x-3 mb-3">
-                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <div className="text-center">
+                  <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent mb-4">
+                    No Words Yet
+                  </h2>
+                  <p className="text-slate-600 mb-8 text-xl leading-relaxed max-w-2xl mx-auto">
+                    Start building your vocabulary collection by adding some words to begin your learning journey
+                  </p>
+                  
+                  {/* Add Words Button */}
+                  <Link
+                    to="/add"
+                    className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-2xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:scale-105 font-bold text-lg group"
+                  >
+                    <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center group-hover:bg-white/30 transition-all duration-300">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                       </svg>
                     </div>
-                    <span className="text-blue-700 font-semibold text-lg">Getting Started</span>
+                    <span>Add Your First Words</span>
+                    <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                    </svg>
+                  </Link>
+                  
+                  {/* Getting Started Info */}
+                  <div className="mt-8 bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-200/50 backdrop-blur-sm max-w-lg mx-auto">
+                    <div className="flex items-center justify-center space-x-3 mb-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <span className="text-blue-700 font-bold text-lg">Getting Started</span>
+                    </div>
+                    <p className="text-blue-600 font-medium text-center">
+                      Click the button above to add your first words and start learning!
+                    </p>
                   </div>
-                  <p className="text-blue-600 font-medium">
-                    Navigate to "Add Words" to begin your learning journey!
-                  </p>
                 </div>
               </div>
             </div>
@@ -479,11 +818,15 @@ const Home: React.FC<HomeProps> = ({
                       key={word.id}
                       word={word}
                       onUpdateDifficulty={onUpdateDifficulty}
-                      onRemoveWord={onRemoveWord}
+                      onRemoveWord={handleRemoveWord}
                       onResetEvaluation={(id) => onUpdateDifficulty(id, 0)}
                       onStartEvaluationWithWord={handleWordClick}
                       fallbackLearningLanguageName={word.language1Name}
                       fallbackKnownLanguageName={word.language2Name}
+                      isSelectionMode={isSelectionMode}
+                      isSelected={selectedWords.has(word.id)}
+                      onToggleSelection={toggleWordSelection}
+                      onImageClick={handleImageClick}
                     />
                   ))}
                 </div>
@@ -642,6 +985,88 @@ const Home: React.FC<HomeProps> = ({
           </div>
         )}
       </div>
+
+      {/* Alert */}
+      {alertMessage && (
+        <div className="fixed bottom-4 left-4 z-50">
+          <div className={`px-6 py-4 rounded-lg shadow-lg flex items-center space-x-3 ${
+            alertMessage.type === 'success' 
+              ? 'bg-green-500 text-white' 
+              : 'bg-red-500 text-white'
+          }`}>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {alertMessage.type === 'success' ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              )}
+            </svg>
+            <span className="font-medium">{alertMessage.message}</span>
+            <button
+              onClick={() => setAlertMessage(null)}
+              className="ml-2 text-white/80 hover:text-white"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Global Image Modal */}
+      <ImageModal
+        word={currentImageWord}
+        languageName={currentImageLanguage}
+        isOpen={showImageModal}
+        onClose={() => setShowImageModal(false)}
+      />
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.664-.833-2.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Delete Selected Words</h3>
+                <p className="text-gray-600 text-sm">This action cannot be undone</p>
+              </div>
+            </div>
+            
+            <div className="mb-6">
+              <p className="text-gray-700 mb-2">
+                Are you sure you want to delete <span className="font-semibold text-red-600">{selectedWords.size}</span> selected word{selectedWords.size !== 1 ? 's' : ''}?
+              </p>
+              <p className="text-sm text-gray-500">
+                This will permanently remove the selected words from your collection.
+              </p>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={deleteSelectedWords}
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition-all duration-200 font-semibold shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Delete {selectedWords.size} word{selectedWords.size !== 1 ? 's' : ''}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

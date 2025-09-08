@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Word, DifficultyLevel } from '../types';
 import { displayLevelToScore } from '../utils/studyAlgorithm';
+import ImageModal from './ImageModal';
 
 interface WordCardProps {
   word: Word;
@@ -10,6 +11,10 @@ interface WordCardProps {
   onStartEvaluationWithWord?: (word: Word) => void;
   fallbackLearningLanguageName?: string; // Used if word.language1Name is missing
   fallbackKnownLanguageName?: string; // Used if word.language2Name is missing
+  isSelectionMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelection?: (wordId: number) => void;
+  onImageClick?: (wordText: string, languageName?: string) => void; // For global image modal
 }
 
 const WordCard: React.FC<WordCardProps> = ({
@@ -19,8 +24,15 @@ const WordCard: React.FC<WordCardProps> = ({
   onResetEvaluation,
   onStartEvaluationWithWord,
   fallbackLearningLanguageName,
-  fallbackKnownLanguageName
+  fallbackKnownLanguageName,
+  isSelectionMode = false,
+  isSelected = false,
+  onToggleSelection,
+  onImageClick
 }) => {
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [currentImageWord, setCurrentImageWord] = useState('');
+  const [currentImageLanguage, setCurrentImageLanguage] = useState('');
   const getRatingButtonColor = (rating: number, isSelected: boolean) => {
     if (isSelected) {
       switch (rating) {
@@ -144,11 +156,28 @@ const WordCard: React.FC<WordCardProps> = ({
     return languageMap[languageName] || 'en-US';
   };
 
+  // Resim modal'ını aç
+  const handleImageClick = (wordText: string, languageName?: string) => {
+    if (onImageClick) {
+      // Global modal kullan (Home sayfası için)
+      onImageClick(wordText, languageName);
+    } else {
+      // Local modal kullan (diğer sayfalar için)
+      setCurrentImageWord(wordText);
+      setCurrentImageLanguage(languageName || '');
+      setShowImageModal(true);
+    }
+  };
+
   return (
     <div 
-      onClick={handleCardClick}
+      onClick={isSelectionMode ? () => onToggleSelection?.(word.id) : handleCardClick}
       className={`bg-white/95 backdrop-blur-sm rounded-3xl p-6 transition-all duration-300 shadow-xl border border-slate-100 group relative overflow-hidden ${
-        onStartEvaluationWithWord 
+        isSelected 
+          ? 'ring-4 ring-green-200 border-green-300 bg-green-50/50' 
+          : isSelectionMode
+          ? 'hover:bg-white hover:shadow-2xl hover:scale-[1.02] cursor-pointer hover:border-green-200 hover:ring-2 hover:ring-green-100'
+          : onStartEvaluationWithWord 
           ? 'hover:bg-white hover:shadow-2xl hover:scale-[1.02] cursor-pointer hover:border-blue-200 hover:ring-2 hover:ring-blue-100' 
           : 'hover:bg-white hover:shadow-2xl'
       }`}
@@ -156,23 +185,53 @@ const WordCard: React.FC<WordCardProps> = ({
       <div className="flex items-center justify-between">
         {/* Left side - Word text and status */}
         <div className="flex items-center space-x-4 min-w-0 flex-1">
+          {/* Selection Checkbox */}
+          {isSelectionMode && (
+            <div className="flex-shrink-0">
+              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
+                isSelected 
+                  ? 'bg-green-500 border-green-500' 
+                  : 'border-gray-300 hover:border-green-400'
+              }`}>
+                {isSelected && (
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </div>
+            </div>
+          )}
           <div className="flex flex-col min-w-0">
             <div className="flex items-center space-x-3">
               <span className={`text-xl font-semibold truncate ${word.isEvaluated ? 'text-gray-900' : 'text-gray-700'}`}>
                 {word.text1}
               </span>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  speakWord(word.text1, word.language1Name || fallbackLearningLanguageName);
-                }}
-                className="p-1.5 rounded-full text-blue-500 hover:text-blue-700 hover:bg-blue-50 transition-all duration-200 hover:scale-110"
-                title={`Listen to pronunciation of "${word.text1}"`}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                </svg>
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    speakWord(word.text1, word.language1Name || fallbackLearningLanguageName);
+                  }}
+                  className="p-1.5 rounded-full text-blue-500 hover:text-blue-700 hover:bg-blue-50 transition-all duration-200 hover:scale-110"
+                  title={`Listen to pronunciation of "${word.text1}"`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                  </svg>
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleImageClick(word.text1, word.language1Name || fallbackLearningLanguageName);
+                  }}
+                  className="p-1.5 rounded-full text-purple-500 hover:text-purple-700 hover:bg-purple-50 transition-all duration-200 hover:scale-110"
+                  title="Show image"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </button>
+              </div>
               {((word.language1Name || fallbackLearningLanguageName) && (word.language2Name || fallbackKnownLanguageName)) && (
                 <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200 whitespace-nowrap flex-shrink-0">
                   {(word.language1Name || fallbackLearningLanguageName || '').toString()} → {(word.language2Name || fallbackKnownLanguageName || '').toString()}
@@ -185,9 +244,23 @@ const WordCard: React.FC<WordCardProps> = ({
               )}
             </div>
             {word.text2 && (
-              <span className="text-base text-gray-500 truncate mt-1">
-                {word.text2}
-              </span>
+              <div className="flex items-center space-x-2 mt-1">
+                <span className="text-base text-gray-500 truncate">
+                  {word.text2}
+                </span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    speakWord(word.text2, word.language2Name || fallbackKnownLanguageName);
+                  }}
+                  className="p-1 rounded-full text-blue-500 hover:text-blue-700 hover:bg-blue-50 transition-all duration-200 hover:scale-110"
+                  title={`Listen to pronunciation of "${word.text2}"`}
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                  </svg>
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -250,6 +323,14 @@ const WordCard: React.FC<WordCardProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Image Modal */}
+      <ImageModal
+        word={currentImageWord}
+        languageName={currentImageLanguage}
+        isOpen={showImageModal}
+        onClose={() => setShowImageModal(false)}
+      />
     </div>
   );
 };
