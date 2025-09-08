@@ -369,25 +369,47 @@ const Study: React.FC<StudyProps> = ({ words, updateDifficulty, sourceLanguageNa
               Test your knowledge and improve your vocabulary
             </p>
             
-            {/* Statistics Preview */}
+            {/* Enhanced Statistics Dashboard */}
             {availableWords.length > 0 && (
-              <div className="grid grid-cols-3 gap-3 max-w-sm mx-auto mb-4">
-                <div className="bg-white/70 rounded-lg p-3 backdrop-blur-sm border border-blue-200/50 text-center">
-                  <div className="text-xl font-bold text-blue-600 mb-1">{availableWords.length}</div>
-                  <div className="text-xs text-slate-600">Words Ready</div>
-                </div>
-                <div className="bg-white/70 rounded-lg p-3 backdrop-blur-sm border border-blue-200/50 text-center">
-                  <div className="text-xl font-bold text-indigo-600 mb-1">
-                    {Math.round(availableWords.reduce((sum, word) => sum + (word.difficulty || 0), 0) / availableWords.length * 10) / 10}
+              <div className="space-y-6">
+                {/* Main Stats Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl mx-auto">
+                  <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 border border-blue-200/50 text-center shadow-lg hover:shadow-xl transition-all duration-300">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-md">
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                      </svg>
+                    </div>
+                    <div className="text-2xl font-bold text-blue-700 mb-1">{availableWords.length}</div>
+                    <div className="text-sm font-medium text-blue-600">Words Ready</div>
                   </div>
-                  <div className="text-xs text-slate-600">Avg. Difficulty</div>
-                </div>
-                <div className="bg-white/70 rounded-lg p-3 backdrop-blur-sm border border-blue-200/50 text-center">
-                  <div className="text-xl font-bold text-purple-600 mb-1">
-                    ~{Math.ceil(availableWords.length * 1.5)}m
+                  
+                  <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 border border-emerald-200/50 text-center shadow-lg hover:shadow-xl transition-all duration-300">
+                    <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-md">
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div className="text-2xl font-bold text-emerald-700 mb-1">
+                      {words.filter(w => w.isEvaluated).length}
+                    </div>
+                    <div className="text-sm font-medium text-emerald-600">Evaluated</div>
                   </div>
-                  <div className="text-xs text-slate-600">Est. Time</div>
+                  
+                  <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 border border-amber-200/50 text-center shadow-lg hover:shadow-xl transition-all duration-300">
+                    <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-md">
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                    </div>
+                    <div className="text-2xl font-bold text-amber-700 mb-1">
+                      {Math.round(availableWords.reduce((sum, word) => sum + (word.difficulty || 0), 0) / availableWords.length * 10) / 10}
+                    </div>
+                    <div className="text-sm font-medium text-amber-600">Avg. Level</div>
+                  </div>
                 </div>
+
+
               </div>
             )}
           </div>
@@ -396,52 +418,77 @@ const Study: React.FC<StudyProps> = ({ words, updateDifficulty, sourceLanguageNa
         {/* Main Content */}
         <div className="text-center">
           {availableWords.length === 0 ? (
-            // No words available
-            <div className="relative bg-gradient-to-br from-white via-blue-50/50 to-indigo-50/50 backdrop-blur-xl rounded-2xl shadow-xl border border-blue-200/50 p-8 max-w-lg mx-auto overflow-hidden">
+            // No words available - Enhanced design
+            <div className="relative bg-gradient-to-br from-white via-amber-50/30 to-orange-50/30 backdrop-blur-xl rounded-3xl shadow-2xl border border-amber-200/50 p-12 max-w-2xl mx-auto overflow-hidden">
               {/* Background Decorations */}
-              <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-blue-100/40 to-indigo-100/40 rounded-full -translate-y-10 translate-x-10"></div>
-              <div className="absolute bottom-0 left-0 w-16 h-16 bg-gradient-to-tr from-indigo-100/40 to-blue-100/40 rounded-full translate-y-8 -translate-x-8"></div>
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-amber-100/40 to-orange-100/40 rounded-full -translate-y-16 translate-x-16"></div>
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-orange-100/40 to-amber-100/40 rounded-full translate-y-12 -translate-x-12"></div>
               
               <div className="relative z-10">
-                <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg ring-2 ring-amber-100">
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-20 h-20 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl ring-4 ring-amber-100">
+                  <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.664-.833-2.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
                   </svg>
                 </div>
                 
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-800 to-amber-800 bg-clip-text text-transparent mb-3">
+                <h2 className="text-3xl font-bold bg-gradient-to-r from-amber-800 via-orange-800 to-red-800 bg-clip-text text-transparent mb-4">
                   No Words Ready for Study
                 </h2>
-                <p className="text-slate-600 mb-6">
-                  You need evaluated words to start a study session
+                <p className="text-slate-600 mb-8 text-lg leading-relaxed">
+                  You need evaluated words to start a study session. First, add and evaluate some words to unlock the study mode.
                 </p>
                 
-                <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-4 rounded-xl border border-amber-200/50 mb-6">
-                  <p className="text-amber-700 font-medium text-sm">
-                    💡 First evaluate some words to unlock study mode
+                <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-6 rounded-2xl border border-amber-200/50 mb-8">
+                  <div className="flex items-center justify-center space-x-3 mb-3">
+                    <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-orange-600 rounded-lg flex items-center justify-center">
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <span className="text-amber-800 font-bold text-lg">Getting Started</span>
+                  </div>
+                  <p className="text-amber-700 font-medium text-center">
+                    💡 First evaluate some words to unlock study mode and start your learning journey!
                   </p>
                 </div>
                 
-                <button
-                  onClick={handleGoHome}
-                  className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-8 py-3 rounded-xl font-semibold hover:shadow-xl transition-all duration-200 transform hover:scale-105"
-                >
-                  Go to Word Evaluation
-                </button>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <button
+                    onClick={handleGoHome}
+                    className="group relative px-8 py-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-2xl font-bold text-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center space-x-3 overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <div className="relative flex items-center space-x-3">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                      </svg>
+                      <span>Go to Word Evaluation</span>
+                    </div>
+                  </button>
+                </div>
               </div>
             </div>
           ) : (
-            // Start study session
-            <div className="text-center">
-              <button
-                onClick={handleStartStudy}
-                className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 flex items-center justify-center space-x-3 mx-auto"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-                <span>Start Study Session</span>
-              </button>
+            // Start study session - Enhanced design
+            <div className="space-y-8">
+              {/* Start Button */}
+              <div className="text-center">
+                <button
+                  onClick={handleStartStudy}
+                  className="group relative px-8 py-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-2xl font-bold text-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center space-x-3 mx-auto"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="relative flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center group-hover:bg-white/30 transition-all duration-300">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                    </div>
+                    <span className="tracking-wide">Start Study Session</span>
+                  </div>
+                </button>
+              </div>
+
             </div>
           )}
         </div>

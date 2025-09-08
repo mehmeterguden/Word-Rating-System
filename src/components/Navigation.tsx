@@ -142,6 +142,11 @@ const Navigation: React.FC<NavigationProps> = ({
                 )}
               </div>
             </button>
+
+          </div>
+
+          {/* Right side - Settings and Set Selector */}
+          <div className="flex items-center space-x-4">
             <button
               onClick={() => navigate('/settings')}
               className={`px-6 py-4 text-sm font-medium transition-all duration-200 rounded-xl ${
@@ -157,11 +162,6 @@ const Navigation: React.FC<NavigationProps> = ({
                 <span>Settings</span>
               </div>
             </button>
-
-          </div>
-
-          {/* Right side - Debug and Set Selector */}
-          <div className="flex items-center space-x-4">
             {/* Auth Links */}
             <div className="relative" ref={dropdownRef}>
             <button

@@ -221,9 +221,9 @@ const Home: React.FC<HomeProps> = ({
       case 'za':
         return 'Z → A';
       case 'oldest':
-        return 'Oldest → Newest';
+        return 'Oldest First';
       case 'newest':
-        return 'Newest → Oldest';
+        return 'Newest First';
       case 'difficultyAsc':
         return 'Difficulty ↑';
       case 'difficultyDesc':
@@ -364,20 +364,19 @@ const Home: React.FC<HomeProps> = ({
                 {/* Selection Mode Button */}
                 <button
                   onClick={toggleSelectionMode}
-                  className={`group relative flex items-center space-x-3 px-8 py-4 rounded-2xl transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:scale-105 font-bold text-lg overflow-hidden h-14 ${
+                  className={`group relative flex items-center space-x-3 px-5 py-3 rounded-xl transition-all duration-300 font-semibold text-sm shadow-sm hover:shadow-md ${
                     isSelectionMode 
-                      ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white ring-4 ring-green-200' 
-                      : 'bg-gradient-to-r from-indigo-500 to-blue-600 text-white hover:from-indigo-600 hover:to-blue-700'
+                      ? 'bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 border border-emerald-200 hover:from-emerald-100 hover:to-green-100 ring-1 ring-emerald-200/50' 
+                      : 'bg-gradient-to-r from-slate-50 to-gray-50 text-slate-600 border border-slate-200 hover:from-slate-100 hover:to-gray-100 hover:text-slate-700 ring-1 ring-slate-200/50'
                   }`}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <div className="relative flex items-center space-x-3">
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-5 h-5 rounded-lg flex items-center justify-center transition-all duration-300 shadow-sm ${
                       isSelectionMode 
-                        ? 'bg-white/20 group-hover:bg-white/30' 
-                        : 'bg-white/20 group-hover:bg-white/30'
+                        ? 'bg-gradient-to-br from-emerald-500 to-green-600 text-white group-hover:from-emerald-600 group-hover:to-green-700' 
+                        : 'bg-gradient-to-br from-slate-400 to-gray-500 text-white group-hover:from-slate-500 group-hover:to-gray-600'
                     }`}>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
@@ -386,7 +385,7 @@ const Home: React.FC<HomeProps> = ({
                     </span>
                   </div>
                   {isSelectionMode && (
-                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-300 rounded-full animate-pulse"></div>
+                    <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-400 rounded-full animate-pulse"></div>
                   )}
                 </button>
 
@@ -523,10 +522,12 @@ const Home: React.FC<HomeProps> = ({
           <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl ring-1 ring-slate-200 p-6 relative z-30">
 
             {/* Filters - Bottom Section in Single Row */}
-            <div className="flex items-center justify-between gap-6 flex-wrap">
-              <div className="flex items-center gap-6 flex-wrap">
+            <div className="flex items-center gap-4 flex-nowrap">
+              <div className="flex items-center gap-4 flex-nowrap flex-1">
                 {/* All/Pending/Evaluated toggle */}
-                <div className="flex bg-gradient-to-r from-white to-blue-50/50 rounded-xl p-2 ring-1 ring-blue-200/60 shadow-lg backdrop-blur-sm hover:shadow-xl transition-all duration-300 h-14">
+                <div className="relative group h-14 flex-shrink-0">
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-100/60 to-indigo-100/60 rounded-xl blur-sm group-hover:blur-md transition-all duration-300"></div>
+                  <div className="relative bg-white/95 rounded-xl ring-1 ring-blue-200/60 shadow-lg backdrop-blur-sm group-hover:shadow-xl group-hover:ring-blue-300/60 transition-all duration-300 h-full flex items-center p-2">
                   <button
                     onClick={() => setFilter('all')}
                     className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center space-x-2 ${
@@ -580,17 +581,18 @@ const Home: React.FC<HomeProps> = ({
                       {evaluatedCount}
                     </span>
                   </button>
+                  </div>
                 </div>
 
                 {/* Search */}
-                <div className="relative group h-14">
+                <div className="relative group h-14 flex-1 min-w-[180px] max-w-[400px]">
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-100/60 to-indigo-100/60 rounded-xl blur-sm group-hover:blur-md transition-all duration-300"></div>
                   <div className="relative bg-white/95 rounded-xl ring-1 ring-blue-200/60 shadow-lg backdrop-blur-sm group-hover:shadow-xl group-hover:ring-blue-300/60 transition-all duration-300 h-full flex items-center">
                     <input
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Search words..."
-                      className="pl-12 pr-12 py-0 rounded-xl border-0 bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 placeholder:text-slate-400 min-w-[240px] font-medium h-full"
+                      className="pl-12 pr-12 py-0 rounded-xl border-0 bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-700 placeholder:text-slate-400 w-full font-medium h-full"
                     />
                     <svg className="w-5 h-5 text-blue-400 absolute left-4 top-1/2 -translate-y-1/2 group-hover:text-blue-500 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M10 18a8 8 0 100-16 8 8 0 000 16z" />
@@ -610,39 +612,42 @@ const Home: React.FC<HomeProps> = ({
                 </div>
 
                 {/* Level filters */}
-                <div className="bg-gradient-to-r from-white to-blue-50/50 rounded-xl p-2.5 ring-1 ring-blue-200/60 shadow-lg backdrop-blur-sm hover:shadow-xl transition-all duration-300 h-14 flex items-center">
-                  <div className="flex items-center gap-1">
+                <div className="relative group h-14 flex-shrink-0">
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-100/60 to-indigo-100/60 rounded-xl blur-sm group-hover:blur-md transition-all duration-300"></div>
+                  <div className="relative bg-white/95 rounded-xl ring-1 ring-blue-200/60 shadow-lg backdrop-blur-sm group-hover:shadow-xl group-hover:ring-blue-300/60 transition-all duration-300 h-full flex items-center p-2">
+                  <div className="flex items-center gap-0.5">
                     {[1,2,3,4,5].map((lvl, index) => {
                       const active = levelFilters.includes(lvl);
                       return (
                         <div key={lvl} className="flex items-center">
                           <button
                             onClick={() => setLevelFilters((prev) => active ? prev.filter(v => v !== lvl) : [...prev, lvl])}
-                            className={`w-10 h-10 rounded-xl text-sm font-bold transition-all duration-300 ${getLevelChipClasses(lvl, active)} ${active ? 'transform scale-110 shadow-lg ring-2 ring-white/50' : 'hover:scale-105 hover:shadow-md'}`}
+                            className={`w-8 h-8 rounded-lg text-xs font-bold transition-all duration-300 ${getLevelChipClasses(lvl, active)} ${active ? 'transform scale-110 shadow-lg ring-2 ring-white/50' : 'hover:scale-105 hover:shadow-md'}`}
                             title={`Level ${lvl}`}
                           >
                             {lvl}
                           </button>
                           {index < 4 && (
-                            <div className="w-px h-7 bg-blue-200/60 mx-2"></div>
+                            <div className="w-px h-6 bg-blue-200/60 mx-1.5"></div>
                           )}
                         </div>
                       );
                     })}
                   </div>
+                  </div>
                 </div>
 
                 {/* Sort dropdown */}
-                <div className="relative group h-14" ref={sortRef}>
+                <div className="relative group h-14 flex-shrink-0" ref={sortRef}>
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-100/60 to-indigo-100/60 rounded-xl blur-sm group-hover:blur-md transition-all duration-300"></div>
                   <button
                     onClick={() => setIsSortOpen((v) => !v)}
-                    className="relative bg-white/95 pl-4 pr-10 py-0 rounded-xl ring-1 ring-blue-200/60 text-slate-700 shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-400 flex items-center gap-3 backdrop-blur-sm min-w-[160px] hover:shadow-xl hover:ring-blue-300/60 transition-all duration-300 h-full"
+                    className="relative bg-white/95 pl-3 pr-8 py-0 rounded-xl ring-1 ring-blue-200/60 text-slate-700 shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-400 flex items-center gap-2 backdrop-blur-sm min-w-[140px] hover:shadow-xl hover:ring-blue-300/60 transition-all duration-300 h-full"
                   >
                     <svg className="w-5 h-5 text-blue-400 group-hover:text-blue-500 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2H3V4zm0 6h10v2H3v-2zm0 6h6v2H3v-2z" />
                     </svg>
-                    <span className="font-semibold">{sortLabel}</span>
+                    <span className="font-semibold whitespace-nowrap">{sortLabel}</span>
                     <svg className={`w-4 h-4 text-blue-400 absolute right-3 transition-transform duration-200 ${isSortOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
@@ -655,8 +660,8 @@ const Home: React.FC<HomeProps> = ({
                       {[
                         { key: 'az', label: 'A → Z' },
                         { key: 'za', label: 'Z → A' },
-                        { key: 'oldest', label: 'Oldest → Newest' },
-                        { key: 'newest', label: 'Newest → Oldest' },
+                        { key: 'oldest', label: 'Oldest First' },
+                        { key: 'newest', label: 'Newest First' },
                         { key: 'difficultyAsc', label: 'Difficulty ↑' },
                         { key: 'difficultyDesc', label: 'Difficulty ↓' }
                       ].map((opt) => (
@@ -811,7 +816,7 @@ const Home: React.FC<HomeProps> = ({
           </div>
         ) : (
           <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl border border-white/20 overflow-hidden relative z-10">
-                          <div className="p-8">
+                          <div className="p-4">
                 <div className="space-y-6">
                   {paginatedWords.map((word) => (
                     <WordCard

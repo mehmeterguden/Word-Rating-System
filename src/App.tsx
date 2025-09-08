@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import Header from './components/Header';
 import Navigation from './components/Navigation';
+import Footer from './components/Footer';
 import Home from './pages/Home';
 import AddWords from './pages/AddWords';
 import EvaluationOptions from './pages/EvaluationOptions';
@@ -168,7 +169,7 @@ function AppContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
         <Header 
           words={words}
         />
@@ -182,7 +183,7 @@ function AppContent() {
           developerMode={developerMode}
         />
         
-        <main className="py-8">
+        <main className="flex-1 py-8">
           <Routes>
             <Route path="/" element={<Navigate to="/home" replace />} />
             <Route path="/home" element={
@@ -280,6 +281,9 @@ function AppContent() {
           reason={modelSwitchToast.reason}
           onClose={() => setModelSwitchToast(prev => ({ ...prev, isVisible: false }))}
         />
+        
+        {/* Footer */}
+        <Footer />
       </div>
   );
 }
