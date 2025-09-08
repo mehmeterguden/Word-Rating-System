@@ -1,6 +1,5 @@
 // Image API utility for word images - Unsplash + Pixabay hybrid
-const UNSPLASH_ACCESS_KEY = process.env.REACT_APP_UNSPLASH_ACCESS_KEY;
-const PIXABAY_ACCESS_KEY = process.env.REACT_APP_PIXABAY_ACCESS_KEY;
+import { getApiKey } from './apiKeys';
 
 interface UnsplashImage {
   id: string;
@@ -217,7 +216,8 @@ const getSearchQuery = (word: string): string => {
 const searchUnsplash = async (query: string): Promise<string | null> => {
   console.log('🔵 Searching Unsplash for:', query);
   
-  if (!UNSPLASH_ACCESS_KEY) {
+  const apiKey = getApiKey('unsplash');
+  if (!apiKey) {
     console.error('❌ Unsplash API key not found');
     return null;
   }
@@ -231,7 +231,7 @@ const searchUnsplash = async (query: string): Promise<string | null> => {
   console.log('🔵 Unsplash remaining calls:', limits.unsplash.remaining);
   
   try {
-    const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape&client_id=${UNSPLASH_ACCESS_KEY}`;
+    const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=1&orientation=landscape&client_id=${apiKey}`;
     console.log('🔵 Unsplash API URL:', url);
     
     const response = await fetch(url);
@@ -265,7 +265,8 @@ const searchUnsplash = async (query: string): Promise<string | null> => {
 const searchPixabay = async (query: string): Promise<string | null> => {
   console.log('🟢 Searching Pixabay for:', query);
   
-  if (!PIXABAY_ACCESS_KEY) {
+  const apiKey = getApiKey('pixabay');
+  if (!apiKey) {
     console.error('❌ Pixabay API key not found');
     return null;
   }
@@ -279,7 +280,7 @@ const searchPixabay = async (query: string): Promise<string | null> => {
   console.log('🟢 Pixabay remaining calls:', limits.pixabay.remaining);
   
   try {
-    const url = `https://pixabay.com/api/?key=${PIXABAY_ACCESS_KEY}&q=${encodeURIComponent(query)}&image_type=photo&per_page=3&safesearch=true`;
+    const url = `https://pixabay.com/api/?key=${apiKey}&q=${encodeURIComponent(query)}&image_type=photo&per_page=3&safesearch=true`;
     console.log('🟢 Pixabay API URL:', url);
     
     const response = await fetch(url);

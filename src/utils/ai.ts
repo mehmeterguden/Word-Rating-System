@@ -1,3 +1,5 @@
+import { getApiKey } from './apiKeys';
+
 export type AiMode = 'explain' | 'examples' | 'synonyms' | 'followup' | 'full';
 
 interface GenerateParams {
@@ -176,9 +178,9 @@ ${outputSchema}
 };
 
 export async function generateAiContent(params: GenerateParams): Promise<AiResult> {
-  const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
+  const apiKey = getApiKey('gemini');
   if (!apiKey) {
-    throw new Error('Missing REACT_APP_GEMINI_API_KEY');
+    throw new Error('Missing Gemini API key. Please configure it in Settings.');
   }
 
   const prompt = buildPrompt(params);
@@ -266,8 +268,8 @@ export async function generateChatReply(params: {
   conversationStarted?: boolean; // avoid repeated greetings
   conversationContext?: string; // previous conversation summary
 }): Promise<string> {
-  const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
-  if (!apiKey) throw new Error('Missing REACT_APP_GEMINI_API_KEY');
+  const apiKey = getApiKey('gemini');
+  if (!apiKey) throw new Error('Missing Gemini API key. Please configure it in Settings.');
 
   const { word1, word2, chatLanguageName, userMessage, sourceLanguageName, targetLanguageName, conversationStarted, conversationContext } = params;
   
@@ -497,8 +499,8 @@ export async function generateDefinitionOnly(params: {
   explanationLanguageName: string; // language to output the definition in
   sourceLanguageName: string; // user's known language (for hints if needed)
 }): Promise<string> {
-  const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
-  if (!apiKey) throw new Error('Missing REACT_APP_GEMINI_API_KEY');
+  const apiKey = getApiKey('gemini');
+  if (!apiKey) throw new Error('Missing Gemini API key. Please configure it in Settings.');
 
   const { word, examplesLanguageName, explanationLanguageName } = params;
   const prompt = `You are a helpful language tutor. The user is learning the word "${word}".

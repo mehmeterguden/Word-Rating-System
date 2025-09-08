@@ -2,6 +2,7 @@
 // Generates translations for words using Gemini AI
 
 import { TranslationResult, TranslationResponse } from '../types';
+import { getApiKey } from './apiKeys';
 
 export interface GenerateTranslationParams {
   words: string[];
@@ -127,9 +128,9 @@ Output Format (JSON only):
 };
 
 export async function generateWordTranslations(params: GenerateTranslationParams): Promise<TranslationResponse> {
-  const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
+  const apiKey = getApiKey('gemini');
   if (!apiKey) {
-    throw new Error('Missing REACT_APP_GEMINI_API_KEY');
+    throw new Error('Missing Gemini API key. Please configure it in Settings.');
   }
 
   // Check if we need to use batch processing
@@ -420,9 +421,9 @@ async function generateWordTranslationsInBatches(params: GenerateTranslationPara
 
 // Single batch processing function (renamed from original function)
 async function generateWordTranslationsSingleBatch(params: GenerateTranslationParams): Promise<TranslationResponse> {
-  const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
+  const apiKey = getApiKey('gemini');
   if (!apiKey) {
-    throw new Error('Missing REACT_APP_GEMINI_API_KEY');
+    throw new Error('Missing Gemini API key. Please configure it in Settings.');
   }
 
   const prompt = buildTranslationPrompt(params);

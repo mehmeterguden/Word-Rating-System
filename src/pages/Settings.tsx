@@ -2,6 +2,15 @@ import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { LANGUAGES, getUniqueLanguages } from '../utils/languages';
 import { Page } from '../types';
+import { 
+  getApiKeyStatus, 
+  getAllApiKeyStatuses, 
+  setUserApiKey, 
+  getUserApiKey, 
+  testApiKey, 
+  getApiKeyStatusText, 
+  getApiKeyStatusColor 
+} from '../utils/apiKeys';
 
 interface SettingsProps {
   setDeveloperMode: (enabled: boolean) => void;
@@ -54,6 +63,25 @@ const Settings: React.FC<SettingsProps> = ({ setDeveloperMode }) => {
     }
   });
 
+  // API Key states
+  const [apiKeys, setApiKeys] = useState({
+    gemini: getUserApiKey('gemini') || '',
+    unsplash: getUserApiKey('unsplash') || '',
+    pixabay: getUserApiKey('pixabay') || ''
+  });
+
+  const [apiKeyStatuses, setApiKeyStatuses] = useState(getAllApiKeyStatuses());
+  const [testingKeys, setTestingKeys] = useState({
+    gemini: false,
+    unsplash: false,
+    pixabay: false
+  });
+  const [testResults, setTestResults] = useState({
+    gemini: null as boolean | null,
+    unsplash: null as boolean | null,
+    pixabay: null as boolean | null
+  });
+
   // Dropdown states
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [searchLanguage, setSearchLanguage] = useState('');
@@ -91,6 +119,11 @@ const Settings: React.FC<SettingsProps> = ({ setDeveloperMode }) => {
   useEffect(() => {
     try { localStorage.setItem(IMAGE_API_KEY, imageApiPreference); } catch {}
   }, [imageApiPreference]);
+
+  // Update API key statuses when component mounts or keys change
+  useEffect(() => {
+    setApiKeyStatuses(getAllApiKeyStatuses());
+  }, [apiKeys]);
 
   // Update dropdown positions on scroll and resize
   useEffect(() => {
@@ -322,6 +355,45 @@ const Settings: React.FC<SettingsProps> = ({ setDeveloperMode }) => {
     setShowModelDropdown(false);
     setSearchModel('');
     setSelectedModelIndex(-1);
+  };
+
+  // API Key management functions
+  const handleApiKeyChange = (keyType: 'gemini' | 'unsplash' | 'pixabay', value: string) => {
+    setApiKeys(prev => ({ ...prev, [keyType]: value }));
+    setTestResults(prev => ({ ...prev, [keyType]: null }));
+  };
+
+  const handleApiKeySave = (keyType: 'gemini' | 'unsplash' | 'pixabay') => {
+    const key = apiKeys[keyType];
+    setUserApiKey(keyType, key);
+    setApiKeyStatuses(getAllApiKeyStatuses());
+  };
+
+  const handleApiKeyTest = async (keyType: 'gemini' | 'unsplash' | 'pixabay') => {
+    const key = apiKeys[keyType];
+    if (!key.trim()) {
+      setTestResults(prev => ({ ...prev, [keyType]: false }));
+      return;
+    }
+
+    setTestingKeys(prev => ({ ...prev, [keyType]: true }));
+    setTestResults(prev => ({ ...prev, [keyType]: null }));
+
+    try {
+      const isValid = await testApiKey(keyType, key);
+      setTestResults(prev => ({ ...prev, [keyType]: isValid }));
+    } catch (error) {
+      setTestResults(prev => ({ ...prev, [keyType]: false }));
+    } finally {
+      setTestingKeys(prev => ({ ...prev, [keyType]: false }));
+    }
+  };
+
+  const handleApiKeyClear = (keyType: 'gemini' | 'unsplash' | 'pixabay') => {
+    setApiKeys(prev => ({ ...prev, [keyType]: '' }));
+    setUserApiKey(keyType, '');
+    setTestResults(prev => ({ ...prev, [keyType]: null }));
+    setApiKeyStatuses(getAllApiKeyStatuses());
   };
 
   return (
@@ -638,6 +710,216 @@ const Settings: React.FC<SettingsProps> = ({ setDeveloperMode }) => {
                   <div className="flex items-center gap-1 mt-2 text-xs text-slate-500">
                     <div className="w-2 h-2 rounded-full bg-green-500"></div>
                     <span>5000 requests/day • Good quality • Diverse content</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* API Key Management Section */}
+          <div className="p-5 rounded-2xl bg-gradient-to-br from-orange-50 to-red-50 ring-1 ring-orange-200 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-100 to-red-100 text-orange-700 flex items-center justify-center">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-slate-800">API Key Management</div>
+                  <div className="text-xs text-slate-500">Configure your API keys for AI and image services</div>
+                </div>
+              </div>
+              <span className="px-2 py-1 rounded-lg bg-orange-100 text-orange-700 text-xs font-medium">Configuration</span>
+            </div>
+
+            <div className="space-y-6">
+              {/* Gemini AI Key */}
+              <div className="p-4 rounded-xl bg-white/60 border border-slate-200">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-green-100 text-green-700 flex items-center justify-center">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-slate-800">Gemini AI Key</div>
+                      <div className="text-xs text-slate-500">Required for AI translations and evaluations</div>
+                    </div>
+                  </div>
+                  <span className={`px-2 py-1 rounded-lg text-xs font-medium ${getApiKeyStatusColor(apiKeyStatuses.gemini)}`}>
+                    {getApiKeyStatusText(apiKeyStatuses.gemini)}
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      value={apiKeys.gemini}
+                      onChange={(e) => handleApiKeyChange('gemini', e.target.value)}
+                      placeholder="Enter your Gemini API key..."
+                      className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                    />
+                    <button
+                      onClick={() => handleApiKeyTest('gemini')}
+                      disabled={testingKeys.gemini || !apiKeys.gemini.trim()}
+                      className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                    >
+                      {testingKeys.gemini ? 'Testing...' : 'Test'}
+                    </button>
+                    <button
+                      onClick={() => handleApiKeySave('gemini')}
+                      disabled={!apiKeys.gemini.trim()}
+                      className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => handleApiKeyClear('gemini')}
+                      className="px-3 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 text-sm font-medium"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  {testResults.gemini !== null && (
+                    <div className={`text-xs px-3 py-2 rounded-lg ${testResults.gemini ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {testResults.gemini ? '✅ API key is valid' : '❌ API key is invalid'}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Unsplash Key */}
+              <div className="p-4 rounded-xl bg-white/60 border border-slate-200">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-slate-800">Unsplash Key</div>
+                      <div className="text-xs text-slate-500">For high-quality word images (50 requests/day)</div>
+                    </div>
+                  </div>
+                  <span className={`px-2 py-1 rounded-lg text-xs font-medium ${getApiKeyStatusColor(apiKeyStatuses.unsplash)}`}>
+                    {getApiKeyStatusText(apiKeyStatuses.unsplash)}
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      value={apiKeys.unsplash}
+                      onChange={(e) => handleApiKeyChange('unsplash', e.target.value)}
+                      placeholder="Enter your Unsplash API key..."
+                      className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    />
+                    <button
+                      onClick={() => handleApiKeyTest('unsplash')}
+                      disabled={testingKeys.unsplash || !apiKeys.unsplash.trim()}
+                      className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                    >
+                      {testingKeys.unsplash ? 'Testing...' : 'Test'}
+                    </button>
+                    <button
+                      onClick={() => handleApiKeySave('unsplash')}
+                      disabled={!apiKeys.unsplash.trim()}
+                      className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => handleApiKeyClear('unsplash')}
+                      className="px-3 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 text-sm font-medium"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  {testResults.unsplash !== null && (
+                    <div className={`text-xs px-3 py-2 rounded-lg ${testResults.unsplash ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {testResults.unsplash ? '✅ API key is valid' : '❌ API key is invalid'}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Pixabay Key */}
+              <div className="p-4 rounded-xl bg-white/60 border border-slate-200">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-green-100 text-green-700 flex items-center justify-center">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-slate-800">Pixabay Key</div>
+                      <div className="text-xs text-slate-500">For diverse word images (5000 requests/day)</div>
+                    </div>
+                  </div>
+                  <span className={`px-2 py-1 rounded-lg text-xs font-medium ${getApiKeyStatusColor(apiKeyStatuses.pixabay)}`}>
+                    {getApiKeyStatusText(apiKeyStatuses.pixabay)}
+                  </span>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      value={apiKeys.pixabay}
+                      onChange={(e) => handleApiKeyChange('pixabay', e.target.value)}
+                      placeholder="Enter your Pixabay API key..."
+                      className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                    />
+                    <button
+                      onClick={() => handleApiKeyTest('pixabay')}
+                      disabled={testingKeys.pixabay || !apiKeys.pixabay.trim()}
+                      className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                    >
+                      {testingKeys.pixabay ? 'Testing...' : 'Test'}
+                    </button>
+                    <button
+                      onClick={() => handleApiKeySave('pixabay')}
+                      disabled={!apiKeys.pixabay.trim()}
+                      className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => handleApiKeyClear('pixabay')}
+                      className="px-3 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 text-sm font-medium"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  {testResults.pixabay !== null && (
+                    <div className={`text-xs px-3 py-2 rounded-lg ${testResults.pixabay ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {testResults.pixabay ? '✅ API key is valid' : '❌ API key is invalid'}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Info Section */}
+              <div className="p-4 rounded-xl bg-blue-50 border border-blue-200">
+                <div className="flex items-start gap-3">
+                  <div className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="text-sm text-slate-700">
+                    <p className="font-medium mb-1">How to get API keys:</p>
+                    <ul className="text-xs space-y-1 text-slate-600">
+                      <li>• <strong>Gemini:</strong> Visit <a href="https://makersuite.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Google AI Studio</a> to get your free API key</li>
+                      <li>• <strong>Unsplash:</strong> Sign up at <a href="https://unsplash.com/developers" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Unsplash Developers</a> for 50 free requests/day</li>
+                      <li>• <strong>Pixabay:</strong> Register at <a href="https://pixabay.com/api/docs/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Pixabay API</a> for 5000 free requests/day</li>
+                    </ul>
+                    <p className="text-xs text-slate-500 mt-2">
+                      <strong>Priority:</strong> User-provided keys take precedence over environment variables. If you have keys in .env, they will be used as fallback.
+                    </p>
                   </div>
                 </div>
               </div>
