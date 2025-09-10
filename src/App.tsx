@@ -223,6 +223,7 @@ function AppContent() {
                 updateDifficulty={updateDifficulty}
                 sourceLanguageName={defaultLanguage1}
                 targetLanguageName={defaultLanguage2}
+                explanationLanguageName={defaultLanguage1}
               />
             } />
             

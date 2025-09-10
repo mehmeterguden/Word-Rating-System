@@ -5,15 +5,20 @@ import StudyCard from '../components/study/StudyCard';
 import StudyProgress from '../components/study/StudyProgress';
 import StudyResult from '../components/study/StudyResult';
 import StudyAiAnalysis from '../components/study/StudyAiAnalysis';
+import QuizModeSelector from '../components/study/QuizModeSelector';
+import ClassicQuizMode from '../components/study/ClassicQuizMode';
+import SpeedQuizMode from '../components/study/SpeedQuizMode';
+import { QuizConfiguration, QuizSession, QuizStats } from '../types/QuizTypes';
 
 interface StudyProps {
   words: Word[];
   updateDifficulty: (id: number, difficulty: DifficultyLevel) => void;
   sourceLanguageName: string;
   targetLanguageName: string;
+  explanationLanguageName?: string;
 }
 
-const Study: React.FC<StudyProps> = ({ words, updateDifficulty, sourceLanguageName, targetLanguageName }) => {
+const Study: React.FC<StudyProps> = ({ words, updateDifficulty, sourceLanguageName, targetLanguageName, explanationLanguageName = 'English' }) => {
   const [availableWords, setAvailableWords] = useState<Word[]>([]);
   const [showResult, setShowResult] = useState(false);
   const [lastResponse, setLastResponse] = useState<{ isKnown: boolean; timestamp: number } | null>(null);
@@ -22,6 +27,10 @@ const Study: React.FC<StudyProps> = ({ words, updateDifficulty, sourceLanguageNa
   const [showAiPrompt, setShowAiPrompt] = useState(false);
   const [showFeedback, setShowFeedback] = useState(true);
   const [studyContainerHeight, setStudyContainerHeight] = useState(600);
+  const [studyMode, setStudyMode] = useState<'study' | 'quiz' | 'quiz-selector'>('study');
+  const [quizConfiguration, setQuizConfiguration] = useState<QuizConfiguration | null>(null);
+  const [quizSession, setQuizSession] = useState<QuizSession | null>(null);
+  const [quizStats, setQuizStats] = useState<QuizStats | null>(null);
   const studyContainerRef = useRef<HTMLDivElement>(null);
   const wasAiAnalysisOpenRef = useRef(false);
   const previousWordIdRef = useRef<number | null>(null);
@@ -121,6 +130,28 @@ const Study: React.FC<StudyProps> = ({ words, updateDifficulty, sourceLanguageNa
     setIsSessionComplete(false);
   };
 
+  const handleStartQuiz = () => {
+    setStudyMode('quiz-selector');
+  };
+
+  const handleQuizModeSelect = (configuration: QuizConfiguration) => {
+    setQuizConfiguration(configuration);
+    setStudyMode('quiz');
+  };
+
+  const handleQuizEnd = () => {
+    setStudyMode('study');
+    setQuizConfiguration(null);
+    setQuizSession(null);
+    setQuizStats(null);
+  };
+
+  const handleQuizResult = (session: QuizSession, stats: QuizStats) => {
+    setQuizSession(session);
+    setQuizStats(stats);
+    setStudyMode('study');
+  };
+
   const handleKnowWord = (responseTime?: number) => {
     setLastResponse({ isKnown: true, timestamp: Date.now() });
     respondToWord(true, responseTime);
@@ -160,6 +191,16 @@ const Study: React.FC<StudyProps> = ({ words, updateDifficulty, sourceLanguageNa
     setShowAiPrompt(false);
   };
 
+
+  const handleEndQuiz = () => {
+    setStudyMode('study');
+    setShowResult(false);
+    setLastResponse(null);
+    setQuizConfiguration(null);
+    setQuizSession(null);
+    setQuizStats(null);
+  };
+
   // Show result screen
   if (showResult && currentSession) {
     return (
@@ -170,6 +211,34 @@ const Study: React.FC<StudyProps> = ({ words, updateDifficulty, sourceLanguageNa
         onGoHome={handleGoHome}
       />
     );
+  }
+
+  // Quiz mode selector
+  if (studyMode === 'quiz-selector') {
+    return (
+      <QuizModeSelector
+        words={availableWords}
+        onModeSelect={handleQuizModeSelect}
+        onBack={() => setStudyMode('study')}
+      />
+    );
+  }
+
+  // Quiz mode active
+  if (studyMode === 'quiz' && quizConfiguration) {
+    const quizProps = {
+      words: availableWords,
+      updateDifficulty: updateDifficulty as (id: number, difficulty: number) => void,
+      configuration: quizConfiguration,
+      onEndQuiz: handleQuizEnd,
+      onShowResult: handleQuizResult
+    };
+
+    if (quizConfiguration.mode === 'classic') {
+      return <ClassicQuizMode {...quizProps} />;
+    } else if (quizConfiguration.mode === 'speed') {
+      return <SpeedQuizMode {...quizProps} />;
+    }
   }
 
   // Study session active
@@ -192,18 +261,18 @@ const Study: React.FC<StudyProps> = ({ words, updateDifficulty, sourceLanguageNa
             <div className="relative flex flex-col" ref={studyContainerRef}>
               <div className="flex justify-center relative">
                 <div className="w-full max-w-4xl">
-                  <StudyCard
-                    word={currentWord}
-                    onKnow={handleKnowWord}
-                    onDontKnow={handleDontKnowWord}
-                    onSkip={hasNextWord ? handleSkipWord : undefined}
-                    onPrevious={hasPreviousWord ? goToPreviousWord : undefined}
-                    onRollback={lastResponse ? rollbackResponse : undefined}
-                    disabled={false}
-                    showResult={lastResponse !== null}
-                    isCorrect={lastResponse?.isKnown}
-                    hasPrevious={hasPreviousWord}
-                    canRollback={!!lastResponse}
+          <StudyCard
+            word={currentWord}
+            onKnow={handleKnowWord}
+            onDontKnow={handleDontKnowWord}
+            onSkip={hasNextWord ? handleSkipWord : undefined}
+            onPrevious={hasPreviousWord ? goToPreviousWord : undefined}
+            onRollback={lastResponse ? rollbackResponse : undefined}
+            disabled={false}
+            showResult={lastResponse !== null}
+            isCorrect={lastResponse?.isKnown}
+            hasPrevious={hasPreviousWord}
+            canRollback={!!lastResponse}
                     lastScoreChange={hookLastScoreChange}
                     isSessionComplete={isSessionComplete}
                     showFeedback={showFeedback}
@@ -235,21 +304,21 @@ const Study: React.FC<StudyProps> = ({ words, updateDifficulty, sourceLanguageNa
                 )}
               </div>
 
-              {/* Session Controls */}
+          {/* Session Controls */}
               <div className="mt-8 flex justify-center items-center gap-6">
-                <button
-                  onClick={() => {
-                    endStudySession();
+            <button
+              onClick={() => {
+                endStudySession();
                     window.location.href = '/';
-                  }}
+              }}
                   className="group relative px-6 py-3 text-slate-600 hover:text-slate-800 font-medium rounded-xl hover:bg-white/60 transition-all duration-200 flex items-center space-x-2"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                  <span>End Session</span>
-                </button>
-              </div>
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              <span>End Session</span>
+            </button>
+          </div>
             </div>
 
             {/* Right: AI Analysis Panel */}
@@ -409,6 +478,46 @@ const Study: React.FC<StudyProps> = ({ words, updateDifficulty, sourceLanguageNa
                   </div>
                 </div>
 
+                {/* Mode Selection */}
+                <div className="mt-8">
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                    <button
+                      onClick={handleStartStudy}
+                      className="group relative px-8 py-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-2xl font-bold text-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center space-x-3"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      <div className="relative flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center group-hover:bg-white/30 transition-all duration-300">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                          </svg>
+                        </div>
+                        <span className="tracking-wide">Study Mode</span>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={handleStartQuiz}
+                      className="group relative px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-2xl font-bold text-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center space-x-3"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-pink-700 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      <div className="relative flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center group-hover:bg-white/30 transition-all duration-300">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <span className="tracking-wide">Quiz Mode</span>
+                      </div>
+                    </button>
+                  </div>
+                  
+                  <div className="mt-4 text-center">
+                    <p className="text-slate-500 text-sm">
+                      Choose between traditional study mode or challenging quiz mode with multiple choice questions
+                    </p>
+                  </div>
+                </div>
 
               </div>
             )}
@@ -443,7 +552,7 @@ const Study: React.FC<StudyProps> = ({ words, updateDifficulty, sourceLanguageNa
                     <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-orange-600 rounded-lg flex items-center justify-center">
                       <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
+                  </svg>
                     </div>
                     <span className="text-amber-800 font-bold text-lg">Getting Started</span>
                   </div>
@@ -461,36 +570,14 @@ const Study: React.FC<StudyProps> = ({ words, updateDifficulty, sourceLanguageNa
                     <div className="relative flex items-center space-x-3">
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                      </svg>
+                    </svg>
                       <span>Go to Word Evaluation</span>
                     </div>
                   </button>
                 </div>
               </div>
             </div>
-          ) : (
-            // Start study session - Enhanced design
-            <div className="space-y-8">
-              {/* Start Button */}
-              <div className="text-center">
-                <button
-                  onClick={handleStartStudy}
-                  className="group relative px-8 py-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-2xl font-bold text-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center space-x-3 mx-auto"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <div className="relative flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center group-hover:bg-white/30 transition-all duration-300">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                    </div>
-                    <span className="tracking-wide">Start Study Session</span>
-                  </div>
-                </button>
-              </div>
-
-            </div>
-          )}
+          ) : null}
         </div>
       </div>
     </div>
