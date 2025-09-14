@@ -163,11 +163,14 @@ const Settings: React.FC<SettingsProps> = ({ setDeveloperMode }) => {
     };
 
     if (showLanguageDropdown || showModelDropdown) {
-      document.addEventListener('mousedown', handleClickOutside);
+      // Use a small delay to ensure click events on dropdown items are processed first
+      setTimeout(() => {
+        document.addEventListener('click', handleClickOutside);
+      }, 100);
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('click', handleClickOutside);
     };
   }, [showLanguageDropdown, showModelDropdown]);
 
@@ -303,6 +306,7 @@ const Settings: React.FC<SettingsProps> = ({ setDeveloperMode }) => {
   };
 
   const handleLanguageDropdownToggle = () => {
+    console.log('Dropdown toggle clicked, current state:', showLanguageDropdown);
     if (showLanguageDropdown) {
       setShowLanguageDropdown(false);
       setSearchLanguage('');
@@ -318,6 +322,7 @@ const Settings: React.FC<SettingsProps> = ({ setDeveloperMode }) => {
   };
 
   const handleLanguageSelect = (lang: any) => {
+    console.log('Language selected:', lang);
     setAiLanguage(lang.name);
     setShowLanguageDropdown(false);
     setSearchLanguage('');
