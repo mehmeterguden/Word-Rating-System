@@ -269,37 +269,54 @@ const WordSelectionContainer: React.FC<WordSelectionContainerProps> = ({
     <div
       ref={containerRef}
       data-word-selection-container
-      className="fixed z-50 transition-all duration-200 ease-out"
+      className="fixed z-50 transition-all duration-300 ease-out"
       style={{
         left: `${containerPosition.x}px`,
         top: `${containerPosition.y}px`,
-        transform: 'translateY(-10px)',
+        transform: isVisible ? 'translateY(0px) scale(1)' : 'translateY(-20px) scale(0.95)',
         opacity: isVisible ? 1 : 0,
         pointerEvents: isVisible ? 'auto' : 'none'
       }}
     >
-      <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 max-w-lg w-[28rem] overflow-hidden backdrop-blur-sm bg-white/95">
+      {/* Backdrop blur overlay */}
+      <div className="absolute inset-0 bg-black/5 backdrop-blur-sm rounded-3xl"></div>
+      
+      <div className="relative bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 max-w-lg w-[28rem] overflow-hidden">
+        {/* Subtle gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-white/50 via-transparent to-blue-50/30 rounded-3xl"></div>
         {/* Header */}
-        <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 text-white p-5 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent"></div>
+        <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 text-white p-6 relative overflow-hidden">
+          {/* Animated background pattern */}
+          <div className="absolute inset-0 bg-gradient-to-r from-white/10 via-transparent to-white/5"></div>
+          <div className="absolute inset-0 opacity-20">
+            <div className="absolute top-0 left-0 w-32 h-32 bg-white/10 rounded-full -translate-x-16 -translate-y-16 animate-pulse"></div>
+            <div className="absolute bottom-0 right-0 w-24 h-24 bg-white/10 rounded-full translate-x-12 translate-y-12 animate-pulse" style={{animationDelay: '1s'}}></div>
+          </div>
+          
           <div className="relative z-10">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm border border-white/30">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/30 shadow-lg">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold">Word Translation</h3>
-                  <p className="text-blue-100 text-sm font-medium">{sourceLanguage} → {targetLanguage}</p>
+                  <h3 className="text-2xl font-bold tracking-tight">Word Translation</h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-blue-100 text-sm font-medium">{sourceLanguage}</span>
+                    <svg className="w-4 h-4 text-blue-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                    </svg>
+                    <span className="text-blue-100 text-sm font-medium">{targetLanguage}</span>
+                  </div>
                 </div>
               </div>
               <button
                 onClick={onClose}
-                className="p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-xl transition-all duration-200 backdrop-blur-sm border border-white/20"
+                className="p-3 text-white/80 hover:text-white hover:bg-white/20 rounded-2xl transition-all duration-200 backdrop-blur-sm border border-white/20 hover:scale-105 hover:shadow-lg group"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 group-hover:rotate-90 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -311,17 +328,22 @@ const WordSelectionContainer: React.FC<WordSelectionContainerProps> = ({
         <div className="p-6">
           {/* Word Display */}
           <div className="mb-6">
-            <div className="flex items-center gap-3 mb-3">
-              <h4 className="text-2xl font-bold text-gray-900">{selectedWord}</h4>
-              <button
-                onClick={() => speakText(selectedWord, sourceLanguage)}
-                className="p-2 rounded-full bg-gradient-to-r from-blue-100 to-indigo-100 hover:from-blue-200 hover:to-indigo-200 text-blue-600 transition-all duration-200 shadow-sm hover:shadow-md"
-                title={`Listen to "${selectedWord}" in ${sourceLanguage}`}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                </svg>
-              </button>
+            <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-2xl p-4 border border-gray-200/50 shadow-sm">
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <h4 className="text-3xl font-bold text-gray-900 mb-1 tracking-tight">{selectedWord}</h4>
+                  <p className="text-sm text-gray-600 font-medium">{sourceLanguage}</p>
+                </div>
+                <button
+                  onClick={() => speakText(selectedWord, sourceLanguage)}
+                  className="p-3 rounded-2xl bg-gradient-to-r from-blue-100 to-indigo-100 hover:from-blue-200 hover:to-indigo-200 text-blue-600 transition-all duration-200 shadow-sm hover:shadow-md hover:scale-105 group"
+                  title={`Listen to "${selectedWord}" in ${sourceLanguage}`}
+                >
+                  <svg className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -329,49 +351,54 @@ const WordSelectionContainer: React.FC<WordSelectionContainerProps> = ({
           {loading ? (
             <div className="space-y-4">
               {/* Loading State - Show word with loading indicator */}
-              <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border border-blue-200 rounded-2xl p-4 shadow-sm">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 rounded-xl flex items-center justify-center shadow-sm">
-                      <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border border-blue-200/50 rounded-2xl p-5 shadow-sm backdrop-blur-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 rounded-2xl flex items-center justify-center shadow-sm">
+                      <svg className="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                       </svg>
                     </div>
-                    <h5 className="text-base font-semibold text-blue-800">Loading Translation...</h5>
+                    <div>
+                      <h5 className="text-lg font-semibold text-blue-800">Loading Translation...</h5>
+                      <p className="text-sm text-blue-600">AI is working on it</p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-1">
-                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                    <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                    <div className="w-3 h-3 bg-blue-400 rounded-full animate-bounce"></div>
+                    <div className="w-3 h-3 bg-indigo-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                    <div className="w-3 h-3 bg-purple-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-3">
-                  <input
-                    type="text"
-                    value={selectedWord}
-                    disabled
-                    className="flex-1 p-3 border-2 border-blue-200 rounded-xl bg-blue-50 text-gray-900 font-medium text-sm shadow-sm"
-                    placeholder="Loading..."
-                  />
-                  <button
-                    disabled
-                    className="p-3 rounded-xl bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-400 cursor-not-allowed shadow-sm"
-                    title="Loading translation..."
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                    </svg>
-                  </button>
-                </div>
-                
-                <div className="mt-2 text-xs text-blue-600 text-center">
-                  Getting translation for "{selectedWord}" from {sourceLanguage} to {targetLanguage}...
+                <div className="bg-white/60 rounded-xl p-4 border border-blue-200/30">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="text"
+                      value={selectedWord}
+                      disabled
+                      className="flex-1 p-3 border-2 border-blue-200/50 rounded-xl bg-white/80 text-gray-900 font-medium text-sm shadow-sm"
+                      placeholder="Loading..."
+                    />
+                    <button
+                      disabled
+                      className="p-3 rounded-xl bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-400 cursor-not-allowed shadow-sm"
+                      title="Loading translation..."
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                      </svg>
+                    </button>
+                  </div>
+                  
+                  <div className="mt-3 text-xs text-blue-600 text-center bg-blue-50/50 rounded-lg py-2">
+                    Getting translation for "{selectedWord}" from {sourceLanguage} to {targetLanguage}...
+                  </div>
                 </div>
               </div>
               
               {/* Action Buttons */}
-              <div className="flex items-center gap-3 pt-4 border-t border-gray-200">
+              <div className="flex items-center gap-3 pt-4 border-t border-gray-200/50">
                 <button
                   disabled
                   className="flex-1 px-6 py-3 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-400 rounded-xl cursor-not-allowed flex items-center justify-center gap-2 text-sm font-medium shadow-sm"
@@ -383,23 +410,24 @@ const WordSelectionContainer: React.FC<WordSelectionContainerProps> = ({
                 </button>
                 <button
                   onClick={onClose}
-                  className="px-6 py-3 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-xl hover:from-gray-200 hover:to-gray-300 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
+                  className="px-6 py-3 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-xl hover:from-gray-200 hover:to-gray-300 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md hover:scale-105"
                 >
                   Close
                 </button>
               </div>
             </div>
           ) : error ? (
-            <div className="flex flex-col items-center justify-center py-6">
-              <div className="w-12 h-12 bg-gradient-to-br from-red-100 to-orange-100 rounded-full flex items-center justify-center mb-3">
-                <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex flex-col items-center justify-center py-8">
+              <div className="w-16 h-16 bg-gradient-to-br from-red-100 to-orange-100 rounded-2xl flex items-center justify-center mb-4 shadow-sm">
+                <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.664-.833-2.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
               </div>
-              <p className="text-sm text-gray-500 mb-3 text-center">{error}</p>
+              <h5 className="text-lg font-semibold text-gray-800 mb-2">Translation Failed</h5>
+              <p className="text-sm text-gray-500 mb-4 text-center max-w-xs">{error}</p>
               <button
                 onClick={loadTranslation}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
+                className="px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl hover:from-blue-600 hover:to-indigo-600 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md hover:scale-105"
               >
                 Try Again
               </button>
@@ -407,149 +435,154 @@ const WordSelectionContainer: React.FC<WordSelectionContainerProps> = ({
           ) : translation ? (
             <div className="space-y-4">
               {/* Main Translation */}
-              <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-2xl p-4 shadow-sm">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 rounded-xl flex items-center justify-center shadow-sm">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200/50 rounded-2xl p-5 shadow-sm backdrop-blur-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 rounded-2xl flex items-center justify-center shadow-sm">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                     </div>
-                    <h5 className="text-base font-semibold text-green-800">Translation</h5>
+                    <div>
+                      <h5 className="text-lg font-semibold text-green-800">Translation</h5>
+                      <p className="text-sm text-green-600">{targetLanguage}</p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      translation.confidence === 'high' ? 'bg-green-100 text-green-800' :
-                      translation.confidence === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium shadow-sm ${
+                      translation.confidence === 'high' ? 'bg-green-100 text-green-800 border border-green-200' :
+                      translation.confidence === 'medium' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
+                      'bg-red-100 text-red-800 border border-red-200'
                     }`}>
                       {translation.confidence === 'high' ? '🟢 High' : 
                        translation.confidence === 'medium' ? '🟡 Medium' : '🔴 Low'}
                     </span>
                     {translation.frequency && (
-                      <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                      <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium border border-blue-200">
                         {translation.frequency}
                       </span>
                     )}
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-3">
-                  <input
-                    type="text"
-                    value={selectedTranslation}
-                    onChange={(e) => setSelectedTranslation(e.target.value)}
-                    className="flex-1 p-3 border-2 border-green-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900 font-medium text-sm shadow-sm"
-                    placeholder="Translation..."
-                  />
-                  <button
-                    onClick={() => speakText(selectedTranslation, targetLanguage)}
-                    className="p-3 rounded-xl bg-gradient-to-r from-green-100 to-emerald-100 hover:from-green-200 hover:to-emerald-200 text-green-700 transition-all duration-200 shadow-sm hover:shadow-md"
-                    title={`Listen to "${selectedTranslation}" in ${targetLanguage}`}
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                    </svg>
-                  </button>
+                <div className="bg-white/60 rounded-xl p-4 border border-green-200/30">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="text"
+                      value={selectedTranslation}
+                      onChange={(e) => setSelectedTranslation(e.target.value)}
+                      className="flex-1 p-3 border-2 border-green-200/50 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-900 font-medium text-sm shadow-sm bg-white/80"
+                      placeholder="Translation..."
+                    />
+                    <button
+                      onClick={() => speakText(selectedTranslation, targetLanguage)}
+                      className="p-3 rounded-xl bg-gradient-to-r from-green-100 to-emerald-100 hover:from-green-200 hover:to-emerald-200 text-green-700 transition-all duration-200 shadow-sm hover:shadow-md hover:scale-105 group"
+                      title={`Listen to "${selectedTranslation}" in ${targetLanguage}`}
+                    >
+                      <svg className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
 
               {/* Word Information Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Etymology */}
                 {translation.etymology && (
-                  <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 rounded-xl p-3 shadow-sm">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-6 h-6 bg-purple-100 text-purple-700 rounded-lg flex items-center justify-center">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200/50 rounded-xl p-4 shadow-sm backdrop-blur-sm">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-8 h-8 bg-purple-100 text-purple-700 rounded-xl flex items-center justify-center shadow-sm">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                         </svg>
                       </div>
                       <h6 className="text-sm font-semibold text-purple-800">Etymology</h6>
                     </div>
-                    <p className="text-xs text-purple-700 leading-relaxed">{translation.etymology}</p>
+                    <p className="text-xs text-purple-700 leading-relaxed bg-white/40 rounded-lg p-3">{translation.etymology}</p>
                   </div>
                 )}
 
                 {/* Pronunciation */}
                 {translation.pronunciation && (
-                  <div className="bg-gradient-to-br from-orange-50 to-red-50 border border-orange-200 rounded-xl p-3 shadow-sm">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-6 h-6 bg-orange-100 text-orange-700 rounded-lg flex items-center justify-center">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="bg-gradient-to-br from-orange-50 to-red-50 border border-orange-200/50 rounded-xl p-4 shadow-sm backdrop-blur-sm">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-8 h-8 bg-orange-100 text-orange-700 rounded-xl flex items-center justify-center shadow-sm">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
                         </svg>
                       </div>
                       <h6 className="text-sm font-semibold text-orange-800">Pronunciation</h6>
                     </div>
-                    <p className="text-xs text-orange-700 font-mono">{translation.pronunciation}</p>
+                    <p className="text-xs text-orange-700 font-mono bg-white/40 rounded-lg p-3">{translation.pronunciation}</p>
                   </div>
                 )}
 
                 {/* Part of Speech */}
                 {translation.partOfSpeech && (
-                  <div className="bg-gradient-to-br from-teal-50 to-cyan-50 border border-teal-200 rounded-xl p-3 shadow-sm">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-6 h-6 bg-teal-100 text-teal-700 rounded-lg flex items-center justify-center">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="bg-gradient-to-br from-teal-50 to-cyan-50 border border-teal-200/50 rounded-xl p-4 shadow-sm backdrop-blur-sm">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-8 h-8 bg-teal-100 text-teal-700 rounded-xl flex items-center justify-center shadow-sm">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                         </svg>
                       </div>
                       <h6 className="text-sm font-semibold text-teal-800">Part of Speech</h6>
                     </div>
-                    <p className="text-xs text-teal-700">{translation.partOfSpeech}</p>
+                    <p className="text-xs text-teal-700 bg-white/40 rounded-lg p-3">{translation.partOfSpeech}</p>
                   </div>
                 )}
 
                 {/* Formality Level */}
                 {translation.formalityLevel && (
-                  <div className="bg-gradient-to-br from-pink-50 to-rose-50 border border-pink-200 rounded-xl p-3 shadow-sm">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-6 h-6 bg-pink-100 text-pink-700 rounded-lg flex items-center justify-center">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="bg-gradient-to-br from-pink-50 to-rose-50 border border-pink-200/50 rounded-xl p-4 shadow-sm backdrop-blur-sm">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-8 h-8 bg-pink-100 text-pink-700 rounded-xl flex items-center justify-center shadow-sm">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                       </div>
                       <h6 className="text-sm font-semibold text-pink-800">Formality</h6>
                     </div>
-                    <p className="text-xs text-pink-700 capitalize">{translation.formalityLevel}</p>
+                    <p className="text-xs text-pink-700 capitalize bg-white/40 rounded-lg p-3">{translation.formalityLevel}</p>
                   </div>
                 )}
               </div>
 
               {/* Usage Context */}
               {translation.usageContext && (
-                <div className="bg-gradient-to-br from-slate-50 to-gray-50 border border-slate-200 rounded-xl p-3 shadow-sm">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-6 h-6 bg-slate-100 text-slate-700 rounded-lg flex items-center justify-center">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="bg-gradient-to-br from-slate-50 to-gray-50 border border-slate-200/50 rounded-xl p-4 shadow-sm backdrop-blur-sm">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-8 h-8 bg-slate-100 text-slate-700 rounded-xl flex items-center justify-center shadow-sm">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
                     <h6 className="text-sm font-semibold text-slate-800">Usage Context</h6>
                   </div>
-                  <p className="text-xs text-slate-700 leading-relaxed">{translation.usageContext}</p>
+                  <p className="text-xs text-slate-700 leading-relaxed bg-white/40 rounded-lg p-3">{translation.usageContext}</p>
                 </div>
               )}
 
               {/* Examples */}
               {translation.examples && translation.examples.length > 0 && (
-                <div className="bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-200 rounded-xl p-3 shadow-sm">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-6 h-6 bg-amber-100 text-amber-700 rounded-lg flex items-center justify-center">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-200/50 rounded-xl p-4 shadow-sm backdrop-blur-sm">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-8 h-8 bg-amber-100 text-amber-700 rounded-xl flex items-center justify-center shadow-sm">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
                     </div>
                     <h6 className="text-sm font-semibold text-amber-800">Examples</h6>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {translation.examples.map((example, index) => (
-                      <div key={index} className="bg-white/50 rounded-lg p-2 border border-amber-100">
-                        <p className="text-xs text-amber-800 font-medium mb-1">{example.sentence}</p>
+                      <div key={index} className="bg-white/60 rounded-xl p-3 border border-amber-100/50 shadow-sm">
+                        <p className="text-xs text-amber-800 font-medium mb-2">{example.sentence}</p>
                         <p className="text-xs text-amber-700 mb-1">{example.translation}</p>
                         {example.context && (
-                          <p className="text-xs text-amber-600 italic">{example.context}</p>
+                          <p className="text-xs text-amber-600 italic bg-amber-50/50 rounded-lg p-2">{example.context}</p>
                         )}
                       </div>
                     ))}
@@ -559,18 +592,18 @@ const WordSelectionContainer: React.FC<WordSelectionContainerProps> = ({
 
               {/* Synonyms */}
               {translation.synonyms && translation.synonyms.length > 0 && (
-                <div className="bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-200 rounded-xl p-3 shadow-sm">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-6 h-6 bg-emerald-100 text-emerald-700 rounded-lg flex items-center justify-center">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-200/50 rounded-xl p-4 shadow-sm backdrop-blur-sm">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-8 h-8 bg-emerald-100 text-emerald-700 rounded-xl flex items-center justify-center shadow-sm">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                       </svg>
                     </div>
                     <h6 className="text-sm font-semibold text-emerald-800">Synonyms</h6>
                   </div>
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-2">
                     {translation.synonyms.map((synonym, index) => (
-                      <span key={index} className="px-2 py-1 bg-emerald-100 text-emerald-800 rounded-lg text-xs font-medium">
+                      <span key={index} className="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-lg text-xs font-medium border border-emerald-200 shadow-sm hover:bg-emerald-200 transition-colors duration-200">
                         {synonym}
                       </span>
                     ))}
@@ -580,40 +613,40 @@ const WordSelectionContainer: React.FC<WordSelectionContainerProps> = ({
 
               {/* Cultural Notes */}
               {translation.culturalNotes && (
-                <div className="bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-200 rounded-xl p-3 shadow-sm">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-6 h-6 bg-violet-100 text-violet-700 rounded-lg flex items-center justify-center">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-200/50 rounded-xl p-4 shadow-sm backdrop-blur-sm">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-8 h-8 bg-violet-100 text-violet-700 rounded-xl flex items-center justify-center shadow-sm">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
                       </svg>
                     </div>
                     <h6 className="text-sm font-semibold text-violet-800">Cultural Notes</h6>
                   </div>
-                  <p className="text-xs text-violet-700 leading-relaxed">{translation.culturalNotes}</p>
+                  <p className="text-xs text-violet-700 leading-relaxed bg-white/40 rounded-lg p-3">{translation.culturalNotes}</p>
                 </div>
               )}
 
               {/* Alternative Translations */}
               {translation.alternatives && translation.alternatives.length > 0 && (
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-3">
-                  <div className="flex items-center gap-1 mb-2">
-                    <div className="w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200/50 rounded-xl p-4 shadow-sm backdrop-blur-sm">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-8 h-8 bg-blue-100 text-blue-700 rounded-xl flex items-center justify-center shadow-sm">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                       </svg>
                     </div>
-                    <h5 className="text-sm font-semibold text-blue-800">Alternatives</h5>
+                    <h5 className="text-sm font-semibold text-blue-800">Alternative Translations</h5>
                   </div>
                   
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     {translation.alternatives.slice(0, 3).map((alternative, index) => (
                       <button
                         key={index}
                         onClick={() => setSelectedTranslation(alternative)}
-                        className={`w-full p-2 rounded-lg text-left transition-all duration-200 text-sm ${
+                        className={`w-full p-3 rounded-xl text-left transition-all duration-200 text-sm shadow-sm hover:shadow-md ${
                           selectedTranslation === alternative
-                            ? 'bg-blue-500 text-white shadow-md'
-                            : 'bg-white text-gray-700 hover:bg-blue-100 border border-blue-200'
+                            ? 'bg-blue-500 text-white shadow-lg'
+                            : 'bg-white/60 text-gray-700 hover:bg-blue-100 border border-blue-200/50'
                         }`}
                       >
                         <div className="flex items-center justify-between">
@@ -623,14 +656,14 @@ const WordSelectionContainer: React.FC<WordSelectionContainerProps> = ({
                               e.stopPropagation();
                               speakText(alternative, targetLanguage);
                             }}
-                            className={`p-1 rounded-full transition-colors ${
+                            className={`p-2 rounded-lg transition-all duration-200 ${
                               selectedTranslation === alternative
-                                ? 'text-white hover:bg-blue-600'
-                                : 'text-gray-500 hover:bg-blue-200'
+                                ? 'text-white hover:bg-blue-600 hover:scale-105'
+                                : 'text-gray-500 hover:bg-blue-200 hover:scale-105'
                             }`}
                             title={`Listen to "${alternative}" in ${targetLanguage}`}
                           >
-                            <svg className="w-2 h-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
                             </svg>
                           </button>
@@ -642,24 +675,24 @@ const WordSelectionContainer: React.FC<WordSelectionContainerProps> = ({
               )}
 
               {/* Action Buttons */}
-              <div className="flex items-center gap-2 pt-3 border-t border-gray-200">
+              <div className="flex items-center gap-3 pt-4 border-t border-gray-200/50">
                 {onAddToWordList && (
                   <button
                     data-add-button
                     onClick={handleAddToWordList}
                     disabled={!selectedTranslation.trim() || isAdding}
-                    className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1 text-sm"
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl hover:from-blue-600 hover:to-indigo-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm font-medium shadow-sm hover:shadow-md hover:scale-105 disabled:hover:scale-100"
                   >
                     {isAdding ? (
                       <>
-                        <svg className="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
                         Adding...
                       </>
                     ) : (
                       <>
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                         </svg>
                         Add to List
@@ -669,7 +702,7 @@ const WordSelectionContainer: React.FC<WordSelectionContainerProps> = ({
                 )}
                 <button
                   onClick={onClose}
-                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
+                  className="px-6 py-3 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-xl hover:from-gray-200 hover:to-gray-300 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md hover:scale-105"
                 >
                   Close
                 </button>

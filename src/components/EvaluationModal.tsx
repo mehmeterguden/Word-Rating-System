@@ -1295,6 +1295,36 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
                             </ul>
                           </div>
                         )}
+                        {/* Collocations */}
+                        {aiResult.collocations && aiResult.collocations.length > 0 && (
+                          <div className="rounded-2xl border border-violet-200 p-4 bg-gradient-to-br from-violet-50 to-white shadow-sm">
+                            <div className="flex items-center gap-2 mb-3">
+                              <div className="w-8 h-8 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                </svg>
+                              </div>
+                              <div className="text-sm font-semibold text-violet-700">Collocations</div>
+                            </div>
+                            <div className="grid gap-2">
+                              {aiResult.collocations.map((collocation, idx) => (
+                                <div key={idx} className="bg-white/60 rounded-lg p-3 border border-violet-100">
+                                  <div className="flex items-start justify-between mb-1">
+                                    <div className="text-sm font-semibold text-slate-800 flex-1">
+                                      {collocation.phrase}
+                                    </div>
+                                    <span className="ml-2 px-2 py-1 rounded-full bg-violet-100 text-violet-700 text-xs font-medium whitespace-nowrap">
+                                      {collocation.category}
+                                    </span>
+                                  </div>
+                                  <div className="text-slate-600 text-xs">
+                                    {collocation.translation}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                         {aiResult.synonyms && aiResult.synonyms.length > 0 && (() => {
                           const primarySynIdx = Math.max(0, aiResult.synonyms.findIndex((s) => s.isExact));
                           return (

@@ -29,6 +29,7 @@ export interface AiResult {
     thirdPersonSingular: string;
   };
   examples?: Array<{ sentence: string; translation?: string }>;
+  collocations?: Array<{ phrase: string; translation: string; category: string }>;
   synonyms?: Array<{ word: string; isExact: boolean }>;
   antonyms?: Array<{ word: string; isExact: boolean }>;
   tips?: string[];
@@ -117,6 +118,9 @@ Return ONLY valid JSON with this structure:
   "examples": [                     // 3-5 examples
     { "sentence": string, "translation": string } // IMPORTANT: wrap every occurrence of the target word in the sentence with [[w]] and [[/w]] markers.
   ],
+  "collocations": [                 // 5-8 common collocations/set phrases
+    { "phrase": string, "translation": string, "category": string } // phrase in ${examplesLanguageName}, translation in ${explanationLanguageName}, category like "verb+noun", "adjective+noun", etc.
+  ],
   "synonyms": [                     // 5-10 synonyms in ${examplesLanguageName} (the target word's language)
     { "word": string, "isExact": boolean } // isExact: true for exact synonyms, false for similar meanings
   ],
@@ -137,6 +141,7 @@ Return ONLY valid JSON with this structure:
          - Alternative pronunciation in a more readable format (e.g., "duh · mand" for "demand")
          - If the word is a verb, include all verb forms: infinitive, past tense, past participle, present participle, and third person singular
          - 3-5 graded example sentences (from easy to harder) in ${examplesLanguageName} with ${explanationLanguageName} translations where needed. In each example sentence, wrap every occurrence of "${word}" with [[w]] and [[/w]] markers for highlighting.
+         - 5-8 common collocations and set phrases in ${examplesLanguageName} with ${explanationLanguageName} translations. Include categories like "verb+noun", "adjective+noun", "preposition+noun", etc. These should be natural, commonly used phrases that contain the word.
          - 5-10 synonyms in ${examplesLanguageName} (mark exact synonyms vs similar meanings)
          - 5-10 antonyms in ${examplesLanguageName} (mark exact antonyms vs opposite meanings)
          - 3-5 short, practical learning tips. Use **bold** for important terms or key concepts.
