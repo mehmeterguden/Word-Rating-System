@@ -224,7 +224,11 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
           handleRate(rating);
           break;
         case 'Escape':
-          onClose();
+          if (showImageModal) {
+            setShowImageModal(false);
+          } else {
+            onClose();
+          }
           break;
         case 'ArrowLeft':
           if (currentIndex > 0) {
@@ -416,7 +420,7 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
   return (
     <div 
       className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      onClick={onClose}
+      onClick={showImageModal ? undefined : onClose}
     >
       <div 
         className={`bg-white rounded-3xl shadow-2xl w-full max-h-[90vh] overflow-hidden transition-[max-width] duration-300 ease-out ${aiOpen ? 'max-w-7xl' : 'max-w-4xl'}`}
@@ -954,8 +958,30 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
                                     <ul className="space-y-1">
                                       {exItems.map((e, i) => {
                                         const highlightedExample = e.replace(/\[\[w\]\](.*?)\[\[\/w\]\]/g, '<span class="underline decoration-blue-400 decoration-2 underline-offset-2 font-semibold text-slate-800">$1</span>');
+                                        const cleanExample = e.replace(/\[\[w\]\](.*?)\[\[\/w\]\]/g, '$1');
                                         return (
-                                          <li key={i} className="text-sm" dangerouslySetInnerHTML={{ __html: `• ${highlightedExample}` }} />
+                                          <li key={i} className="text-sm flex items-center gap-2">
+                                            <button
+                                              onClick={() => speakWord(cleanExample, sourceLanguageName)}
+                                              className="p-1 rounded-full hover:bg-emerald-100 transition-colors duration-200 group"
+                                              title={`Listen to example in ${sourceLanguageName}`}
+                                            >
+                                              <svg 
+                                                className="w-3 h-3 text-emerald-600 group-hover:text-emerald-700 group-hover:scale-110 transition-all duration-200" 
+                                                fill="none" 
+                                                stroke="currentColor" 
+                                                viewBox="0 0 24 24"
+                                              >
+                                                <path 
+                                                  strokeLinecap="round" 
+                                                  strokeLinejoin="round" 
+                                                  strokeWidth={2} 
+                                                  d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" 
+                                                />
+                                              </svg>
+                                            </button>
+                                            <span dangerouslySetInnerHTML={{ __html: `• ${highlightedExample}` }} />
+                                          </li>
                                         );
                                       })}
                                     </ul>
@@ -1092,15 +1118,9 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
                             <div className="flex items-center gap-3">
                               <h3 className="text-2xl font-bold text-slate-900">{currentWord?.text1}</h3>
                               <button
-                                onClick={() => {
-                                  if ('speechSynthesis' in window) {
-                                    const utterance = new SpeechSynthesisUtterance(currentWord?.text1);
-                                    utterance.lang = resolveLangCode(targetLanguageName) || 'en-US';
-                                    speechSynthesis.speak(utterance);
-                                  }
-                                }}
+                                onClick={() => speakWord(currentWord?.text1 || '', localFormatReversed ? sourceLanguageName : targetLanguageName)}
                                 className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
-                                title="Listen pronunciation"
+                                title={`Listen pronunciation in ${localFormatReversed ? sourceLanguageName : targetLanguageName}`}
                               >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
@@ -1237,16 +1257,38 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
                               {aiResult.examples.map((ex, idx) => {
                                 // Simple and reliable [[w]] tag replacement
                                 const highlightedSentence = ex.sentence.replace(/\[\[w\]\](.*?)\[\[\/w\]\]/g, '<span class="underline decoration-blue-400 decoration-2 underline-offset-2 font-semibold text-slate-800">$1</span>');
+                                const cleanSentence = ex.sentence.replace(/\[\[w\]\](.*?)\[\[\/w\]\]/g, '$1');
                                 
                                 return (
-                                  <li key={idx} className="text-sm">
-                                    <div className="text-slate-800" dangerouslySetInnerHTML={{ __html: highlightedSentence }} />
-                                    {ex.translation && (
-                                      <div 
-                                        className="text-slate-500" 
-                                        dangerouslySetInnerHTML={{ __html: formatInlineText(ex.translation, true) }} 
-                                      />
-                                    )}
+                                  <li key={idx} className="text-sm flex items-start gap-2">
+                                    <button
+                                      onClick={() => speakWord(cleanSentence, localFormatReversed ? sourceLanguageName : targetLanguageName)}
+                                      className="p-1 rounded-full hover:bg-emerald-100 transition-colors duration-200 group mt-0.5"
+                                      title={`Listen to example in ${localFormatReversed ? sourceLanguageName : targetLanguageName}`}
+                                    >
+                                      <svg 
+                                        className="w-3 h-3 text-emerald-600 group-hover:text-emerald-700 group-hover:scale-110 transition-all duration-200" 
+                                        fill="none" 
+                                        stroke="currentColor" 
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <path 
+                                          strokeLinecap="round" 
+                                          strokeLinejoin="round" 
+                                          strokeWidth={2} 
+                                          d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" 
+                                        />
+                                      </svg>
+                                    </button>
+                                    <div className="flex-1">
+                                      <div className="text-slate-800" dangerouslySetInnerHTML={{ __html: highlightedSentence }} />
+                                      {ex.translation && (
+                                        <div 
+                                          className="text-slate-500" 
+                                          dangerouslySetInnerHTML={{ __html: formatInlineText(ex.translation, true) }} 
+                                        />
+                                      )}
+                                    </div>
                                   </li>
                                 );
                               })}

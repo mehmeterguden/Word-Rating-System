@@ -162,6 +162,24 @@ const Navigation: React.FC<NavigationProps> = ({
                 <span>Settings</span>
               </div>
             </button>
+            
+            {/* Text Selection Test Link */}
+            <button
+              onClick={() => navigate('/text-selection-test')}
+              className={`px-6 py-4 text-sm font-medium transition-all duration-200 rounded-xl ${
+                currentPage === 'text-selection-test'
+                  ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg transform scale-105'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 hover:shadow-md'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+                </svg>
+                <span>Text Test</span>
+              </div>
+            </button>
+            
             {/* Auth Links */}
             <div className="relative" ref={dropdownRef}>
             <button

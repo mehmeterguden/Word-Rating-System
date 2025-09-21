@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { generateWordTranslations } from '../utils/wordTranslation';
+import VoiceInput from './VoiceInput';
 
 interface TranslationSuggestion {
   originalWord: string;
@@ -179,8 +180,105 @@ const LiveTranslation: React.FC<LiveTranslationProps> = ({
     };
   }, []);
 
+  // Handle voice input
+  const handleVoiceInput = (text: string) => {
+    setInputValue(text);
+    // Don't auto-translate - let user decide when to translate
+    // User can press Enter or click Send button to translate
+  };
+
+  // Get language code for voice input
+  const getLanguageCode = (languageName: string): string => {
+    const languageMap: { [key: string]: string } = {
+      'English': 'en-US',
+      'Turkish': 'tr-TR',
+      'Spanish': 'es-ES',
+      'French': 'fr-FR',
+      'German': 'de-DE',
+      'Italian': 'it-IT',
+      'Portuguese': 'pt-PT',
+      'Russian': 'ru-RU',
+      'Chinese': 'zh-CN',
+      'Japanese': 'ja-JP',
+      'Korean': 'ko-KR',
+      'Arabic': 'ar-SA',
+      'Hindi': 'hi-IN',
+      'Dutch': 'nl-NL',
+      'Swedish': 'sv-SE',
+      'Norwegian': 'no-NO',
+      'Danish': 'da-DK',
+      'Finnish': 'fi-FI',
+      'Polish': 'pl-PL',
+      'Czech': 'cs-CZ',
+      'Hungarian': 'hu-HU',
+      'Greek': 'el-GR',
+      'Hebrew': 'he-IL',
+      'Thai': 'th-TH',
+      'Vietnamese': 'vi-VN',
+      'Indonesian': 'id-ID',
+      'Malay': 'ms-MY',
+      'Filipino': 'fil-PH'
+    };
+    
+    return languageMap[languageName] || 'en-US';
+  };
+
+  // Text-to-speech function with saved voice preference
+  const speakText = (text: string, language: string) => {
+    if ('speechSynthesis' in window) {
+      // Stop any ongoing speech
+      window.speechSynthesis.cancel();
+      
+      const utterance = new SpeechSynthesisUtterance(text);
+      const langCode = getLanguageCode(language);
+      utterance.lang = langCode;
+      
+      // Get saved voice preference from cookies/localStorage
+      const voiceKey = `tts-voice-${langCode}`;
+      let preferredVoiceName: string | null = null;
+      try {
+        preferredVoiceName = localStorage.getItem(voiceKey);
+      } catch (err) {
+        console.warn('Could not access localStorage for voice preference');
+      }
+      
+      // Set voice based on saved preference or fallback
+      const voices = window.speechSynthesis.getVoices();
+      let targetVoice: SpeechSynthesisVoice | undefined;
+      
+      if (preferredVoiceName) {
+        // Use saved voice preference
+        targetVoice = voices.find(voice => voice.name === preferredVoiceName);
+      }
+      
+      if (!targetVoice) {
+        // Fallback: find default voice for language
+        targetVoice = voices.find(voice => 
+          voice.lang === langCode && voice.default
+        ) || voices.find(voice => 
+          voice.lang.startsWith(langCode.split('-')[0])
+        );
+      }
+      
+      if (targetVoice) {
+        utterance.voice = targetVoice;
+      }
+      
+      // Set speech parameters
+      utterance.rate = 0.9; // Slightly slower for better understanding
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+      
+      // Speak the text
+      window.speechSynthesis.speak(utterance);
+    } else {
+      console.warn('Speech synthesis not supported');
+    }
+  };
+
   return (
     <div className="relative">
+
       {/* Input field */}
       <div className="relative flex">
         <input
@@ -191,12 +289,21 @@ const LiveTranslation: React.FC<LiveTranslationProps> = ({
           onKeyPress={handleKeyPress}
           placeholder={`Type a word in ${language1} for translation...`}
           disabled={disabled}
-          className={`flex-1 px-4 py-3 border-2 rounded-l-xl text-gray-900 placeholder-gray-500 transition-all duration-200 ${
+          className={`flex-1 px-4 py-3 pr-20 border-2 rounded-l-xl text-gray-900 placeholder-gray-500 transition-all duration-200 ${
             disabled 
               ? 'bg-gray-100 border-gray-200 cursor-not-allowed' 
               : 'bg-white border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
           } ${currentSuggestion ? 'border-blue-400' : ''}`}
         />
+        
+        {/* Voice Input Button */}
+        <div className="absolute right-16 top-1/2 transform -translate-y-1/2 z-10">
+          <VoiceInput
+            onTextChange={handleVoiceInput}
+            language={getLanguageCode(language1)}
+            disabled={disabled}
+          />
+        </div>
         
         {/* Send button */}
         <button
@@ -247,6 +354,28 @@ const LiveTranslation: React.FC<LiveTranslationProps> = ({
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-2">
               <span className="font-semibold text-gray-900">{currentSuggestion.originalWord}</span>
+              
+              {/* Voice button for original word */}
+              <button
+                onClick={() => speakText(currentSuggestion.originalWord, language1)}
+                className="p-1 rounded-full hover:bg-gray-100 transition-colors duration-200 group"
+                title={`Listen to "${currentSuggestion.originalWord}" in ${language1}`}
+              >
+                <svg 
+                  className="w-4 h-4 text-gray-600 group-hover:text-blue-600 group-hover:scale-110 transition-all duration-200" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" 
+                  />
+                </svg>
+              </button>
+              
               <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                 currentSuggestion.confidence === 'high' ? 'bg-emerald-100 text-emerald-800' :
                 currentSuggestion.confidence === 'medium' ? 'bg-amber-100 text-amber-800' :

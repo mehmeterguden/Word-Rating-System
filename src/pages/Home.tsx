@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Word, DifficultyLevel } from '../types';
 import { displayLevelToScore } from '../utils/studyAlgorithm';
 import WordCard from '../components/WordCard';
@@ -10,6 +10,7 @@ interface HomeProps {
   onUpdateDifficulty: (id: number, difficulty: DifficultyLevel, internalScore?: number) => void;
   onRemoveWord: (id: number) => void;
   onResetEvaluation: () => void;
+  onStartEvaluationWithWord?: (word: Word) => void;
 }
 
 type FilterType = 'all' | 'pending' | 'evaluated';
@@ -19,15 +20,17 @@ const Home: React.FC<HomeProps> = ({
   words,
   onUpdateDifficulty,
   onRemoveWord,
-  onResetEvaluation
+  onResetEvaluation,
+  onStartEvaluationWithWord
 }) => {
-  const navigate = useNavigate();
   
   // Handle word click to start evaluation
   const handleWordClick = (word: Word) => {
     // Allow clicking on all words, regardless of evaluation status
     console.log('🏠 Home: Word clicked:', { id: word.id, text1: word.text1, isEvaluated: word.isEvaluated });
-    navigate(`/evaluate?wordId=${word.id}`);
+    if (onStartEvaluationWithWord) {
+      onStartEvaluationWithWord(word);
+    }
   };
   
   // Handle image modal

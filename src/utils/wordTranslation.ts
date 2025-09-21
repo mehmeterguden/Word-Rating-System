@@ -59,6 +59,18 @@ const logAiResponse = (model: string, prompt: string, response: string, startTim
   const responseTokens = Math.ceil(response.length / 4); // Rough estimate: ~4 chars per token
   const totalTokens = promptTokens + responseTokens;
   
+  // Terminal output with clear formatting
+  console.log('\n🚀 ===== GEMINI AI TRANSLATION RESPONSE =====');
+  console.log(`📊 Model: ${model}`);
+  console.log(`⏱️  Duration: ${duration.toFixed(2)}s`);
+  console.log(`📝 Prompt Tokens: ~${promptTokens}`);
+  console.log(`📤 Response Tokens: ~${responseTokens}`);
+  console.log(`💰 Total Tokens: ~${totalTokens}`);
+  console.log(`📏 Response Length: ${response.length} characters`);
+  console.log(`⚡ Tokens/Second: ${(totalTokens / duration).toFixed(1)}`);
+  console.log('🚀 ===========================================\n');
+  
+  // Also log to browser console for debugging
   console.log(`Word Translation AI Response Details:`);
   console.log(`   Model: ${model}`);
   console.log(`   Duration: ${duration.toFixed(2)}s`);
@@ -80,37 +92,38 @@ const buildTranslationPrompt = ({
 }: GenerateTranslationParams) => {
   const wordsList = words.map((word, index) => `${index + 1}. ${word}`).join('\n');
   
-  return `Expert Translation Task
+  return `Expert Word Analysis & Translation Task
 
-Role: You are a professional translator with native-level proficiency in both ${sourceLanguageName} and ${targetLanguageName}.
+Role: You are a professional linguist and translator with native-level proficiency in both ${sourceLanguageName} and ${targetLanguageName}. You provide comprehensive word analysis including translation, etymology, usage, and examples.
 
-Task: Translate ${words.length} words from ${sourceLanguageName} to ${targetLanguageName}.
+Task: Analyze ${words.length} words from ${sourceLanguageName} and provide comprehensive information including translation to ${targetLanguageName}.
 
-Words to translate:
+Words to analyze:
 ${wordsList}
 
-${customInstructions ? `CRITICAL CUSTOM REQUIREMENTS - MUST BE APPLIED TO EVERY TRANSLATION:
+${customInstructions ? `CRITICAL CUSTOM REQUIREMENTS - MUST BE APPLIED TO EVERY ANALYSIS:
 ${customInstructions}
 
-MANDATORY INSTRUCTION: Apply these custom requirements to BOTH the "translation" field AND the "alternatives" array of EVERY word. The custom requirements override all other translation rules. If the requirements ask for examples, add them to both the main translation and all alternatives. If they ask for specific formatting, apply it to both the main translation and all alternatives. These requirements are NOT optional and must be followed exactly.` : ''}
+MANDATORY INSTRUCTION: Apply these custom requirements to ALL fields of EVERY word analysis. The custom requirements override all other analysis rules. These requirements are NOT optional and must be followed exactly.` : ''}
 
-Translation Standards:
-1. Accuracy: Provide the most accurate and commonly used translation
-2. Context: Consider the most likely usage context for each word
-3. Quality: Ensure translations are natural and idiomatic in the target language
-4. Confidence Levels:
-   - "high": Very common words with clear, unambiguous translations
-   - "medium": Words that may have context-dependent meanings
-   - "low": Rare, ambiguous, or highly context-specific words
-5. Alternatives: Provide 2-4 high-quality alternative translations including:
-   - Formal and informal variants
-   - Regional differences
-   - Synonyms and related terms
-6. Formatting: Preserve exact capitalization and punctuation from original words
-7. Separator: Use "${separator}" as the separator in formatted output
+Analysis Standards:
+1. Translation: Provide the most accurate and commonly used translation
+2. Etymology: Include word origin and historical development (if available)
+3. Pronunciation: Provide phonetic pronunciation guide
+4. Part of Speech: Identify grammatical category (noun, verb, adjective, etc.)
+5. Usage Context: Explain when and how the word is typically used
+6. Formality Level: Indicate formal/informal usage
+7. Frequency: Rate how common the word is (very common/common/uncommon/rare)
+8. Examples: Provide 2-3 practical example sentences
+9. Synonyms: List 3-5 related words in the target language
+10. Cultural Notes: Include any cultural or contextual information
+11. Confidence Levels:
+    - "high": Very common words with clear, unambiguous translations
+    - "medium": Words that may have context-dependent meanings
+    - "low": Rare, ambiguous, or highly context-specific words
 
 ${customInstructions ? `SPECIAL INSTRUCTION FOR CUSTOM REQUIREMENTS:
-When custom requirements are provided, they take PRIORITY over all other instructions. Apply them to BOTH the "translation" field AND the "alternatives" array exactly as specified. Do not ignore or modify the custom requirements. Every alternative translation must also follow the custom requirements.` : ''}
+When custom requirements are provided, they take PRIORITY over all other instructions. Apply them to ALL fields exactly as specified. Do not ignore or modify the custom requirements.` : ''}
 
 Output Format (JSON only):
 {
@@ -118,7 +131,22 @@ Output Format (JSON only):
     {
       "originalWord": "exact original word",
       "translation": "best translation${customInstructions ? ' (with custom requirements applied)' : ''}",
-      "confidence": "high|medium|low", 
+      "confidence": "high|medium|low",
+      "etymology": "word origin and history",
+      "pronunciation": "phonetic pronunciation guide",
+      "partOfSpeech": "grammatical category",
+      "usageContext": "when and how to use this word",
+      "formalityLevel": "formal|informal|neutral",
+      "frequency": "very common|common|uncommon|rare",
+      "examples": [
+        {
+          "sentence": "example sentence in source language",
+          "translation": "translation of example sentence",
+          "context": "brief context explanation"
+        }
+      ],
+      "synonyms": ["synonym1", "synonym2", "synonym3"],
+      "culturalNotes": "cultural or contextual information",
       "alternatives": ["alt1${customInstructions ? ' (with custom requirements)' : ''}", "alt2${customInstructions ? ' (with custom requirements)' : ''}", "alt3${customInstructions ? ' (with custom requirements)' : ''}"]
     }
   ],
@@ -195,6 +223,11 @@ export async function generateWordTranslations(params: GenerateTranslationParams
         
         // Log AI response details
         logAiResponse(model, prompt, text, startTime);
+        
+        // Log raw AI JSON response to terminal
+        console.log('\n📄 ===== RAW AI JSON RESPONSE =====');
+        console.log(jsonText);
+        console.log('📄 ================================\n');
         
         let cleanedJson = jsonText;
         if (jsonText.startsWith('```')) {
@@ -483,6 +516,11 @@ async function generateWordTranslationsSingleBatch(params: GenerateTranslationPa
         
         // Log AI response details
         logAiResponse(model, prompt, text, startTime);
+        
+        // Log raw AI JSON response to terminal
+        console.log('\n📄 ===== RAW AI JSON RESPONSE =====');
+        console.log(jsonText);
+        console.log('📄 ================================\n');
         
         let cleanedJson = jsonText;
         if (jsonText.startsWith('```')) {

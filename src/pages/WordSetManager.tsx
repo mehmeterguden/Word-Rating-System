@@ -199,13 +199,6 @@ const WordSetManager: React.FC<WordSetManagerProps> = ({
               <div className="absolute top-0 right-0 w-12 h-12 bg-gradient-to-br from-blue-100/40 to-indigo-100/40 rounded-full -translate-y-6 translate-x-6"></div>
               <div className="absolute bottom-0 left-0 w-8 h-8 bg-gradient-to-tr from-indigo-100/40 to-blue-100/40 rounded-full translate-y-4 -translate-x-4"></div>
               
-              {/* Active Badge */}
-              {set.id === activeSetId && (
-                <div className="absolute -top-1 -right-1 bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-2 py-1 rounded-full text-xs font-semibold shadow-lg ring-2 ring-white z-20">
-                  Active
-                </div>
-              )}
-
               <div className="relative z-10">
                 {/* Set Content */}
                 {editingSetId === set.id ? (
@@ -256,7 +249,14 @@ const WordSetManager: React.FC<WordSetManagerProps> = ({
                         <div className={`w-3 h-3 rounded-full ${
                           set.id === activeSetId ? 'bg-gradient-to-r from-blue-500 to-indigo-600' : 'bg-slate-300'
                         }`}></div>
-                        <h3 className="text-lg font-semibold text-slate-800">{set.name}</h3>
+                        <div className="flex items-center space-x-2">
+                          <h3 className="text-lg font-semibold text-slate-800">{set.name}</h3>
+                          {set.id === activeSetId && (
+                            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-2 py-1 rounded-full text-xs font-semibold shadow-md">
+                              Active
+                            </div>
+                          )}
+                        </div>
                       </div>
                       
                       <div className="flex items-center space-x-1">

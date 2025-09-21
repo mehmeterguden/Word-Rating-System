@@ -10,7 +10,9 @@ import Study from './pages/Study';
 import WordSetManager from './pages/WordSetManager';
 import DebugPage from './pages/DebugPage';
 import Settings from './pages/Settings';
+import TextSelectionTest from './pages/TextSelectionTest';
 import EvaluationModal from './components/EvaluationModal';
+import WordSelectionProvider from './components/WordSelectionProvider';
 import { useWords } from './hooks/useWords';
 import { useEvaluation } from './hooks/useEvaluation';
 import { useWordSets } from './hooks/useWordSets';
@@ -195,6 +197,7 @@ function AppContent() {
                 }}
                 onRemoveWord={removeWord}
                 onResetEvaluation={resetEvaluation}
+                onStartEvaluationWithWord={(word) => startEvaluation([word])}
               />
             } />
             
@@ -247,6 +250,7 @@ function AppContent() {
             {developerMode && (
               <Route path="/debug" element={<DebugPage />} />
             )}
+            <Route path="/text-selection-test" element={<TextSelectionTest />} />
           </Routes>
         </main>
 
@@ -285,6 +289,33 @@ function AppContent() {
         
         {/* Footer */}
         <Footer />
+        
+        {/* Word Selection Provider */}
+        <WordSelectionProvider 
+          onAddToWordList={(word, translation) => {
+            console.log('Adding word to list:', { word, translation });
+            
+            // Add the word to the current word set
+            if (activeSetId) {
+              const newWord = {
+                text1: word,
+                text2: translation,
+                language1Name: defaultLanguage1,
+                language2Name: defaultLanguage2,
+                separator: defaultSeparator
+              };
+              
+              addBilingualWords([newWord], activeSetId);
+              console.log('✅ Word added to active set:', activeSetId);
+            } else {
+              console.log('❌ No active word set found');
+            }
+          }}
+          sourceLanguage={defaultLanguage1}
+          targetLanguage={defaultLanguage2}
+        >
+          {/* Empty children - WordSelectionProvider renders its own container */}
+        </WordSelectionProvider>
       </div>
   );
 }

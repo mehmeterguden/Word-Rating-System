@@ -1,4 +1,4 @@
-export type Page = 'home' | 'add' | 'evaluate' | 'study' | 'sets' | 'settings' | 'debug' | 'login' | 'register';
+export type Page = 'home' | 'add' | 'evaluate' | 'study' | 'sets' | 'settings' | 'debug' | 'login' | 'register' | 'text-selection-test';
 
 export type DifficultyLevel = 0 | 1 | 2 | 3 | 4 | 5;
 
@@ -76,6 +76,19 @@ export interface TranslationResult {
   confidence: 'high' | 'medium' | 'low';
   alternatives?: string[]; // Alternative translations
   context?: string; // Usage context or note
+  etymology?: string; // Word origin and history
+  pronunciation?: string; // Phonetic pronunciation guide
+  partOfSpeech?: string; // Grammatical category
+  usageContext?: string; // When and how to use this word
+  formalityLevel?: 'formal' | 'informal' | 'neutral'; // Formality level
+  frequency?: 'very common' | 'common' | 'uncommon' | 'rare'; // How common the word is
+  examples?: Array<{
+    sentence: string; // Example sentence in source language
+    translation: string; // Translation of example sentence
+    context: string; // Brief context explanation
+  }>;
+  synonyms?: string[]; // Related words in target language
+  culturalNotes?: string; // Cultural or contextual information
 }
 
 export interface TranslationResponse {
