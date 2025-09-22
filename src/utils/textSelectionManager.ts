@@ -236,7 +236,7 @@ const handleTextSelection = (
           console.log('🔄 Selection changed during 1-second wait, not showing container');
         }
         globalSelectionTimeout = null;
-      }, 1000); // Wait 1 second before showing container
+      }, 700); // Wait 1 second before showing container
     } else {
       console.log('❌ Invalid text selection:', `"${selectedText}"`);
       currentSelectedText = ''; // Reset if invalid

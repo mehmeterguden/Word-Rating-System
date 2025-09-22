@@ -107,23 +107,41 @@ ${customInstructions}
 MANDATORY INSTRUCTION: Apply these custom requirements to ALL fields of EVERY word analysis. The custom requirements override all other analysis rules. These requirements are NOT optional and must be followed exactly.` : ''}
 
 Analysis Standards:
-1. Translation: Provide the most accurate and commonly used translation
+1. Translation: Provide complete and natural translations. For phrases or sentences, translate as a whole unit with full meaning and context. Do not break down into individual words unless specifically requested.
 2. Etymology: Include word origin and historical development (if available)
 3. Pronunciation: Provide phonetic pronunciation guide
 4. Part of Speech: Identify grammatical category (noun, verb, adjective, etc.)
-5. Usage Context: Explain when and how the word is typically used
+5. Usage Context: Explain when and how the word/phrase is typically used
 6. Formality Level: Indicate formal/informal usage
 7. Frequency: Rate how common the word is (very common/common/uncommon/rare)
 8. Examples: Provide 2-3 practical example sentences
 9. Synonyms: List 3-5 related words in the target language
 10. Cultural Notes: Include any cultural or contextual information
-11. Confidence Levels:
+11. Alternatives: Provide exactly 3 different contextual meanings/translations of the word/phrase. Each alternative should be a complete, natural translation that represents a different semantic meaning or usage context. Do NOT include explanations in parentheses. Focus on:
+    - Different contextual meanings (e.g., "bank" → "banka", "nehir kenarı", "güvenmek")
+    - Different levels of formality (formal vs informal versions)
+    - Different semantic nuances (literal vs figurative meanings)
+    - Different parts of speech if applicable (noun vs verb forms)
+    
+    Examples of good alternatives:
+    - "run" → "koşmak", "çalıştırmak", "akmak"
+    - "light" → "ışık", "hafif", "açık"
+    - "book" → "kitap", "rezervasyon", "kaydetmek"
+    - "bank" → "banka", "nehir kenarı", "güvenmek"
+12. Confidence Levels:
     - "high": Very common words with clear, unambiguous translations
     - "medium": Words that may have context-dependent meanings
     - "low": Rare, ambiguous, or highly context-specific words
 
 ${customInstructions ? `SPECIAL INSTRUCTION FOR CUSTOM REQUIREMENTS:
 When custom requirements are provided, they take PRIORITY over all other instructions. Apply them to ALL fields exactly as specified. Do not ignore or modify the custom requirements.` : ''}
+
+IMPORTANT FOR ALTERNATIVES:
+- Provide exactly 3 alternatives, no more, no less
+- Each alternative must be a complete, natural translation
+- Do NOT include any explanations, clarifications, or context in parentheses
+- Focus on different semantic meanings, not just different words for the same meaning
+- Alternatives should be immediately usable translations
 
 Output Format (JSON only):
 {
@@ -147,7 +165,7 @@ Output Format (JSON only):
       ],
       "synonyms": ["synonym1", "synonym2", "synonym3"],
       "culturalNotes": "cultural or contextual information",
-      "alternatives": ["alt1${customInstructions ? ' (with custom requirements)' : ''}", "alt2${customInstructions ? ' (with custom requirements)' : ''}", "alt3${customInstructions ? ' (with custom requirements)' : ''}"]
+      "alternatives": ["alternative translation 1", "alternative translation 2", "alternative translation 3"]
     }
   ],
   "separator": "${separator}",
@@ -197,15 +215,15 @@ export async function generateWordTranslations(params: GenerateTranslationParams
       const body = { 
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
-          temperature: params.customInstructions ? 0.3 : 0.2,  // Slightly higher for custom requirements
-          maxOutputTokens: params.customInstructions ? 5120 : 4096,  // More tokens for custom requirements
-          topP: 0.9,  // Optimized for precision while maintaining creativity
-          topK: 40   // Balanced for quality and diversity
+          temperature: params.customInstructions ? 0.3 : 0.1,  // Lower temperature for faster, more consistent responses
+          maxOutputTokens: params.customInstructions ? 5120 : 2048,  // Reduced tokens for speed
+          topP: 0.8,  // Optimized for speed and precision
+          topK: 20   // Reduced for faster processing
         }
       };
       // Add timeout for faster responses
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout for speed
       
       const res = await fetch(url, { 
         method: 'POST', 
@@ -490,15 +508,15 @@ async function generateWordTranslationsSingleBatch(params: GenerateTranslationPa
       const body = { 
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
-          temperature: params.customInstructions ? 0.3 : 0.2,  // Slightly higher for custom requirements
-          maxOutputTokens: params.customInstructions ? 5120 : 4096,  // More tokens for custom requirements
-          topP: 0.9,  // Optimized for precision while maintaining creativity
-          topK: 40   // Balanced for quality and diversity
+          temperature: params.customInstructions ? 0.3 : 0.1,  // Lower temperature for faster, more consistent responses
+          maxOutputTokens: params.customInstructions ? 5120 : 2048,  // Reduced tokens for speed
+          topP: 0.8,  // Optimized for speed and precision
+          topK: 20   // Reduced for faster processing
         }
       };
       // Add timeout for faster responses
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout for speed
       
       const res = await fetch(url, { 
         method: 'POST', 

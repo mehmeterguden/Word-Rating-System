@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { generateWordTranslations } from '../utils/wordTranslation';
 import { TranslationResult } from '../types';
+import { getLanguageByName } from '../utils/languages';
 
 interface WordSelectionContainerProps {
   selectedWord: string;
@@ -27,95 +28,69 @@ const WordSelectionContainer: React.FC<WordSelectionContainerProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [selectedTranslation, setSelectedTranslation] = useState('');
   const [isAdding, setIsAdding] = useState(false);
+  const [isEditingTranslation, setIsEditingTranslation] = useState(false);
+  const [editingText, setEditingText] = useState<string>('');
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Simple cache for translations
+  const translationCache = useRef<Map<string, TranslationResult>>(new Map());
 
-  // Get language code for TTS
-  const getLanguageCode = (languageName: string): string => {
-    const languageMap: { [key: string]: string } = {
-      'English': 'en-US',
-      'Turkish': 'tr-TR',
-      'Spanish': 'es-ES',
-      'French': 'fr-FR',
-      'German': 'de-DE',
-      'Italian': 'it-IT',
-      'Portuguese': 'pt-PT',
-      'Russian': 'ru-RU',
-      'Japanese': 'ja-JP',
-      'Korean': 'ko-KR',
-      'Chinese': 'zh-CN',
-      'Arabic': 'ar-SA',
-      'Hindi': 'hi-IN',
-      'Dutch': 'nl-NL',
-      'Swedish': 'sv-SE',
-      'Norwegian': 'nb-NO',
-      'Danish': 'da-DK',
-      'Finnish': 'fi-FI',
-      'Polish': 'pl-PL',
-      'Czech': 'cs-CZ',
-      'Hungarian': 'hu-HU',
-      'Romanian': 'ro-RO',
-      'Bulgarian': 'bg-BG',
-      'Croatian': 'hr-HR',
-      'Serbian': 'sr-RS',
-      'Slovak': 'sk-SK',
-      'Slovenian': 'sl-SI',
-      'Estonian': 'et-EE',
-      'Latvian': 'lv-LV',
-      'Lithuanian': 'lt-LT',
-      'Greek': 'el-GR',
-      'Hebrew': 'he-IL',
-      'Thai': 'th-TH',
-      'Vietnamese': 'vi-VN',
-      'Indonesian': 'id-ID',
-      'Malay': 'ms-MY',
-      'Filipino': 'fil-PH'
-    };
-    
-    return languageMap[languageName] || 'en-US';
+
+  // Resolve language code from display name (same as EvaluationModal)
+  const resolveLangCode = (languageName?: string): string | undefined => {
+    if (!languageName) return undefined;
+    const match = getLanguageByName(languageName);
+    return match?.code;
   };
 
-  // Text-to-speech function with saved voice preference
+  // Text-to-speech function with accent support (same as EvaluationModal)
   const speakText = (text: string, language: string) => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
+    try {
+      const synth = (window as any).speechSynthesis as SpeechSynthesis | undefined;
+      if (!synth) return;
+      synth.cancel();
       
       const utterance = new SpeechSynthesisUtterance(text);
-      const langCode = getLanguageCode(language);
-      utterance.lang = langCode;
+      const langCode = resolveLangCode(language) || 'en';
+      utterance.lang = langCode === 'en' ? 'en-US' : langCode;
       
+      // Choose voice: saved per-language preference > lang match > fallback
+      const voices = synth.getVoices?.() || [];
       const voiceKey = `tts-voice-${langCode}`;
-      let preferredVoiceName: string | null = null;
-      try {
-        preferredVoiceName = localStorage.getItem(voiceKey);
-      } catch (err) {
-        console.warn('Could not access localStorage for voice preference');
+      let preferredName: string | null = null;
+      try { 
+        preferredName = localStorage.getItem(voiceKey); 
+      } catch {}
+      
+      let chosen: SpeechSynthesisVoice | undefined = preferredName ? 
+        voices.find(v => v.name === preferredName) : undefined;
+      
+      if (!chosen) {
+        chosen = voices.find(v => v.lang?.toLowerCase().startsWith(langCode));
       }
       
-      const voices = window.speechSynthesis.getVoices();
-      let targetVoice: SpeechSynthesisVoice | undefined;
-      
-      if (preferredVoiceName) {
-        targetVoice = voices.find(voice => voice.name === preferredVoiceName);
+      if (!chosen) {
+        chosen = voices[0];
       }
       
-      if (!targetVoice) {
-        targetVoice = voices.find(voice => 
-          voice.lang === langCode && voice.default
-        ) || voices.find(voice => 
-          voice.lang.startsWith(langCode.split('-')[0])
-        );
+      if (chosen) {
+        utterance.voice = chosen;
+        console.log(`🎵 Using voice: ${chosen.name} (${chosen.lang}) for ${language}`);
+      } else {
+        console.warn(`⚠️ No suitable voice found for ${language} (${langCode})`);
       }
       
-      if (targetVoice) {
-        utterance.voice = targetVoice;
-      }
-      
-      utterance.rate = 0.9;
+      // Optimize for longer texts
+      utterance.rate = 0.7; // Slower for better comprehension of longer texts
       utterance.pitch = 1.0;
       utterance.volume = 1.0;
       
-      window.speechSynthesis.speak(utterance);
-    } else {
+      // Add natural pauses for better readability
+      utterance.text = text.replace(/[.!?]/g, '$& '); // Add space after punctuation
+      
+      synth.speak(utterance);
+    } catch {
+      // No-op on unsupported environments
       console.warn('Speech synthesis not supported');
     }
   };
@@ -145,9 +120,22 @@ const WordSelectionContainer: React.FC<WordSelectionContainerProps> = ({
     }
   }, [isVisible]);
 
-  // Load translation
+  // Load translation with caching
   const loadTranslation = async () => {
     if (!selectedWord.trim()) return;
+    
+    // Create cache key
+    const cacheKey = `${selectedWord.trim()}-${sourceLanguage}-${targetLanguage}`;
+    
+    // Check cache first
+    const cachedTranslation = translationCache.current.get(cacheKey);
+    if (cachedTranslation) {
+      console.log('⚡ Using cached translation for:', selectedWord);
+      setTranslation(cachedTranslation);
+      setSelectedTranslation(cachedTranslation.translation);
+      setLoading(false);
+      return;
+    }
     
     try {
       console.log('🔄 Loading translation for:', selectedWord);
@@ -157,7 +145,7 @@ const WordSelectionContainer: React.FC<WordSelectionContainerProps> = ({
         sourceLanguageName: sourceLanguage,
         targetLanguageName: targetLanguage,
         separator: '-',
-        customInstructions: ''
+        customInstructions: 'Provide complete and natural translations. Do not break down into individual words. Translate the entire phrase or sentence as a whole unit with full meaning and context. For alternatives, provide exactly 3 different contextual meanings or semantic variations of the word/phrase. Each alternative should be a complete, natural translation without any explanations in parentheses. Focus on different semantic meanings, not synonyms. Examples: "run" alternatives should be "koşmak", "çalıştırmak", "akmak" - clean translations without parentheses.'
       });
 
       if (result.translations && result.translations.length > 0) {
@@ -172,12 +160,17 @@ const WordSelectionContainer: React.FC<WordSelectionContainerProps> = ({
         console.log(`📋 Alternatives: ${translationData.alternatives?.length || 0} options`);
         console.log('🎉 ======================================\n');
         
-        setTranslation({
+        const translationResult = {
           originalWord: selectedWord,
           translation: translationData.translation,
           alternatives: translationData.alternatives || [],
           confidence: translationData.confidence || 'medium'
-        });
+        };
+        
+        // Cache the translation
+        translationCache.current.set(cacheKey, translationResult);
+        
+        setTranslation(translationResult);
         setSelectedTranslation(translationData.translation);
       } else {
         console.log('❌ No translation found');
@@ -217,6 +210,62 @@ const WordSelectionContainer: React.FC<WordSelectionContainerProps> = ({
     } finally {
       setIsAdding(false);
     }
+  };
+
+  const handleAlternativeSelect = (alternative: string) => {
+    if (translation && translation.alternatives) {
+      // Get current main translation
+      const currentMainTranslation = translation.translation;
+      
+      // Create new alternatives array: replace selected alternative with current main translation
+      // This preserves the order of alternatives
+      const newAlternatives = translation.alternatives.map(alt => 
+        alt === alternative ? currentMainTranslation : alt
+      );
+      
+      // Update translation object: swap main translation with selected alternative
+      setTranslation({
+        ...translation,
+        translation: alternative,
+        alternatives: newAlternatives
+      });
+      
+      // Update selected translation
+      setSelectedTranslation(alternative);
+    }
+  };
+
+  const handleTranslationClick = () => {
+    setIsEditingTranslation(true);
+    setEditingText(selectedTranslation);
+  };
+
+  const handleTranslationSave = () => {
+    if (translation && translation.alternatives) {
+      // Get current main translation
+      const currentMainTranslation = translation.translation;
+      
+      // Create new alternatives array: replace current main translation with edited text
+      const newAlternatives = translation.alternatives.map(alt => 
+        alt === currentMainTranslation ? editingText : alt
+      );
+      
+      // Update translation object
+      setTranslation({
+        ...translation,
+        translation: editingText,
+        alternatives: newAlternatives
+      });
+      
+      // Update selected translation
+      setSelectedTranslation(editingText);
+    }
+    setIsEditingTranslation(false);
+  };
+
+  const handleTranslationCancel = () => {
+    setIsEditingTranslation(false);
+    setEditingText('');
   };
 
   // Handle escape key
@@ -337,16 +386,61 @@ const WordSelectionContainer: React.FC<WordSelectionContainerProps> = ({
               {/* Main Translation */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <h3 className="text-lg font-bold bg-gradient-to-r from-slate-800 to-indigo-800 bg-clip-text text-transparent">{selectedTranslation}</h3>
-                  <button
-                    onClick={() => speakText(selectedTranslation, targetLanguage)}
-                    className="p-2 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 hover:scale-105 shadow-lg"
-                    title={`Listen to "${selectedTranslation}" in ${targetLanguage}`}
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                    </svg>
-                  </button>
+                  {isEditingTranslation ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={editingText}
+                        onChange={(e) => setEditingText(e.target.value)}
+                        className="text-lg font-bold bg-gradient-to-r from-slate-800 to-indigo-800 bg-clip-text text-transparent border border-blue-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleTranslationSave();
+                          } else if (e.key === 'Escape') {
+                            handleTranslationCancel();
+                          }
+                        }}
+                      />
+                      <button
+                        onClick={handleTranslationSave}
+                        className="p-1 rounded-lg bg-green-500 text-white hover:bg-green-600 transition-all duration-200"
+                        title="Save"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={handleTranslationCancel}
+                        className="p-1 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-all duration-200"
+                        title="Cancel"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <h3 
+                        className="text-lg font-bold bg-gradient-to-r from-slate-800 to-indigo-800 bg-clip-text text-transparent cursor-pointer hover:opacity-80 transition-all duration-200"
+                        onClick={handleTranslationClick}
+                        title="Click to edit"
+                      >
+                        {selectedTranslation}
+                      </h3>
+                      <button
+                        onClick={() => speakText(selectedTranslation, targetLanguage)}
+                        className="p-2 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 hover:scale-105 shadow-lg"
+                        title={`Listen to "${selectedTranslation}" in ${targetLanguage}`}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                        </svg>
+                      </button>
+                    </>
+                  )}
                 </div>
                 <span className="text-sm text-slate-600 bg-gradient-to-r from-blue-50 to-indigo-50 px-3 py-1.5 rounded-full border border-blue-200 font-medium">{targetLanguage}</span>
               </div>
@@ -359,7 +453,7 @@ const WordSelectionContainer: React.FC<WordSelectionContainerProps> = ({
                     {translation.alternatives.slice(0, 3).map((alternative, index) => (
                       <button
                         key={index}
-                        onClick={() => setSelectedTranslation(alternative)}
+                        onClick={() => handleAlternativeSelect(alternative)}
                         className={`flex-1 p-2.5 rounded-xl text-center transition-all duration-200 text-sm font-medium ${
                           selectedTranslation === alternative
                             ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg transform scale-105'
