@@ -52,8 +52,6 @@ export const showWordSelection = (
   targetLanguage: string = 'Turkish',
   onAddToWordList?: (word: string, translation: string) => void
 ) => {
-  console.log('🚀 Showing word selection container immediately for:', word.trim());
-  
   globalSelectionState = {
     selectedWord: word.trim(),
     position,
@@ -92,46 +90,37 @@ export const getSelectionState = () => globalSelectionState;
 const isValidText = (text: string): boolean => {
   const trimmedText = text.trim();
   
-  console.log('🔍 Validating text:', trimmedText);
-  
   // Must not be empty
   if (!trimmedText) {
-    console.log('❌ Empty text');
     return false;
   }
   
   // Must be reasonable length (1-200 characters for phrases)
   if (trimmedText.length < 1 || trimmedText.length > 200) {
-    console.log('❌ Invalid length:', trimmedText.length);
     return false;
   }
   
   // Must not be just numbers
   if (/^\d+$/.test(trimmedText)) {
-    console.log('❌ Just numbers');
     return false;
   }
   
   // Must not be just punctuation
   if (/^[^a-zA-ZçğıöşüÇĞIİÖŞÜ0-9]+$/.test(trimmedText)) {
-    console.log('❌ Just punctuation');
     return false;
   }
   
   // Must contain at least some letters (not just special characters)
   if (!/[a-zA-ZçğıöşüÇĞIİÖŞÜ]/.test(trimmedText)) {
-    console.log('❌ No letters found');
     return false;
   }
   
   // Check word count (max 10 words for phrases)
   const wordCount = trimmedText.split(/\s+/).length;
   if (wordCount > 10) {
-    console.log('❌ Too many words:', wordCount);
     return false;
   }
   
-  console.log('✅ Valid text (word count:', wordCount, ')');
   return true;
 };
 
@@ -178,18 +167,14 @@ const handleTextSelection = (
   targetLanguage: string = 'Turkish',
   onAddToWordList?: (word: string, translation: string) => void
 ) => {
-  console.log('🎯 Text selection handler triggered');
-  
   // Add a small delay to ensure selection is complete
   setTimeout(() => {
     const selection = window.getSelection();
     if (!selection || !selection.toString().trim()) {
-      console.log('🔍 No text selection found');
       // Clear current selection and hide container if visible
       if (currentSelectedText) {
         currentSelectedText = '';
         if (globalSelectionState.isVisible) {
-          console.log('🔍 Selection cleared, hiding container');
           hideWordSelection();
         }
       }
@@ -197,11 +182,9 @@ const handleTextSelection = (
     }
 
     const selectedText = selection.toString().trim();
-    console.log('🔍 Text selected:', `"${selectedText}"`);
     
     // If it's the same selection, don't do anything
     if (selectedText === currentSelectedText) {
-      console.log('🔄 Same selection, ignoring event');
       return;
     }
     
@@ -213,7 +196,6 @@ const handleTextSelection = (
     
     // Hide container only if it's a different selection
     if (globalSelectionState.isVisible && currentSelectedText) {
-      console.log('🔄 Different selection detected, hiding container');
       hideWordSelection();
     }
     
@@ -223,22 +205,17 @@ const handleTextSelection = (
     // Only show container for valid text (word or phrase)
     if (isValidText(selectedText)) {
       const position = getSelectionPosition();
-      console.log('✅ Valid text selected, scheduling container opening in 1 second');
       
-      // Set timeout to show container after 1 second
+      // Set timeout to show container after 700ms
       globalSelectionTimeout = setTimeout(() => {
         // Double-check that selection is still the same
         const currentSelection = window.getSelection();
         if (currentSelection && currentSelection.toString().trim() === selectedText) {
-          console.log('🚀 1 second passed, showing container for:', selectedText);
           showWordSelection(selectedText, position, sourceLanguage, targetLanguage, onAddToWordList);
-        } else {
-          console.log('🔄 Selection changed during 1-second wait, not showing container');
         }
         globalSelectionTimeout = null;
-      }, 700); // Wait 1 second before showing container
+      }, 700);
     } else {
-      console.log('❌ Invalid text selection:', `"${selectedText}"`);
       currentSelectedText = ''; // Reset if invalid
     }
   }, 50); // Small delay to ensure selection is complete
@@ -252,27 +229,42 @@ export const setupGlobalTextSelection = (
 ) => {
   console.log('🔧 Setting up text selection listeners...');
   
+  // Debounce timer for selectionchange events
+  let selectionChangeTimeout: NodeJS.Timeout | null = null;
+  
   // Create new handler with current settings
   const selectionHandler = () => {
-    console.log('🎯 Selection event triggered');
     handleTextSelection(sourceLanguage, targetLanguage, onAddToWordList);
+  };
+  
+  // Debounced handler for selectionchange (fires very frequently)
+  const debouncedSelectionHandler = () => {
+    if (selectionChangeTimeout) {
+      clearTimeout(selectionChangeTimeout);
+    }
+    selectionChangeTimeout = setTimeout(() => {
+      handleTextSelection(sourceLanguage, targetLanguage, onAddToWordList);
+    }, 100); // Wait 100ms after last selectionchange event
   };
   
   // Add event listeners for text selection
   document.addEventListener('mouseup', selectionHandler);
   document.addEventListener('keyup', selectionHandler);
   
-  // Add selectionchange event listener (most important for text selection)
-  document.addEventListener('selectionchange', selectionHandler);
+  // Add debounced selectionchange event listener (fires very frequently)
+  document.addEventListener('selectionchange', debouncedSelectionHandler);
   
-  console.log('✅ Event listeners added: mouseup, keyup, selectionchange');
+  console.log('✅ Event listeners added: mouseup, keyup, selectionchange (debounced)');
   
   // Return cleanup function
   return () => {
     console.log('🧹 Removing text selection listeners');
+    if (selectionChangeTimeout) {
+      clearTimeout(selectionChangeTimeout);
+    }
     document.removeEventListener('mouseup', selectionHandler);
     document.removeEventListener('keyup', selectionHandler);
-    document.removeEventListener('selectionchange', selectionHandler);
+    document.removeEventListener('selectionchange', debouncedSelectionHandler);
   };
 };
 
@@ -328,7 +320,7 @@ export const initializeTextSelection = (
   };
 };
 
-export default {
+const textSelectionManager = {
   showWordSelection,
   hideWordSelection,
   getSelectionState,
@@ -338,3 +330,5 @@ export default {
   setupEscapeKeyHandler,
   initializeTextSelection
 };
+
+export default textSelectionManager;

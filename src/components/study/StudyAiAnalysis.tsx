@@ -27,34 +27,6 @@ const StudyAiAnalysis: React.FC<StudyAiAnalysisProps> = ({
   const [showLangIntro, setShowLangIntro] = useState(false);
   const [introLang, setIntroLang] = useState<string>('English');
 
-  // Reset AI content when word changes
-  useEffect(() => {
-    if (currentWord) {
-      setAiResult(null);
-      setAiError(null);
-      setAltDefinition('');
-    }
-  }, [currentWord?.id]);
-
-  // Load AI content when panel opens
-  useEffect(() => {
-    if (isOpen && currentWord && !aiResult && !aiLoading) {
-      handleRunAi();
-    }
-  }, [isOpen, currentWord]);
-
-  // Listen for refresh event from parent
-  useEffect(() => {
-    const handleRefresh = () => {
-      if (isOpen) {
-        handleRunAi();
-      }
-    };
-
-    window.addEventListener('refresh-ai-analysis', handleRefresh);
-    return () => window.removeEventListener('refresh-ai-analysis', handleRefresh);
-  }, [isOpen]);
-
   const formatInlineText = useCallback((text: string, isAssistant: boolean = false) => {
     const escaped = text
       .replace(/&/g, '&amp;')
@@ -69,7 +41,7 @@ const StudyAiAnalysis: React.FC<StudyAiAnalysisProps> = ({
       .replace(/\[\[w\]\](.*?)\[\[\/w\]\]/g, '<span class="underline decoration-blue-400 decoration-2 underline-offset-2 font-semibold text-slate-800">$1</span>');
   }, []);
 
-  const handleRunAi = async () => {
+  const handleRunAi = useCallback(async () => {
     if (!currentWord) return;
     
     try {
@@ -119,7 +91,35 @@ const StudyAiAnalysis: React.FC<StudyAiAnalysisProps> = ({
     } finally {
       setAiLoading(false);
     }
-  };
+  }, [currentWord, sourceLanguageName, targetLanguageName]);
+
+  // Reset AI content when word changes
+  useEffect(() => {
+    if (currentWord) {
+      setAiResult(null);
+      setAiError(null);
+      setAltDefinition('');
+    }
+  }, [currentWord?.id, currentWord]);
+
+  // Load AI content when panel opens
+  useEffect(() => {
+    if (isOpen && currentWord && !aiResult && !aiLoading) {
+      handleRunAi();
+    }
+  }, [isOpen, currentWord, aiLoading, aiResult, handleRunAi]);
+
+  // Listen for refresh event from parent
+  useEffect(() => {
+    const handleRefresh = () => {
+      if (isOpen) {
+        handleRunAi();
+      }
+    };
+
+    window.addEventListener('refresh-ai-analysis', handleRefresh);
+    return () => window.removeEventListener('refresh-ai-analysis', handleRefresh);
+  }, [isOpen, handleRunAi]);
 
   const handleLanguageSelect = () => {
     try {

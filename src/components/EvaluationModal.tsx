@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { generateAiContent, AiResult } from '../utils/ai';
 import { Word, DifficultyLevel } from '../types';
-import { getLanguageByName, LANGUAGES, getUniqueLanguages } from '../utils/languages';
+import { getLanguageByName, getUniqueLanguages } from '../utils/languages';
 import { generateChatReply, generateChatGreeting, generateDefinitionOnly } from '../utils/ai';
 import ImageModal from './ImageModal';
 // Chat is now integrated into the AI panel; no separate modal
@@ -39,7 +39,7 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiResult, setAiResult] = useState<AiResult | null>(null);
   const [altDefinition, setAltDefinition] = useState<string>('');
-  const [followupText, setFollowupText] = useState('');
+  const [followupText] = useState('');
   const [aiMessages, setAiMessages] = useState<Array<{ role: 'user' | 'assistant'; text?: string; result?: AiResult }>>([]);
   const [isChatMode, setIsChatMode] = useState(false);
   const [showLangIntro, setShowLangIntro] = useState(false);
@@ -187,7 +187,7 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
         setChatMessages([{ id: 'welcome', role: 'assistant', text: `Hello! We can chat here. I can help you with the word "${currentWord?.text1 || ''}". How can I help?` }]);
       }
     })();
-  }, [currentWord?.id]);
+  }, [currentWord?.id, currentWord?.text1, sourceLanguageName]);
   // Load available speech voices
   useEffect(() => {
     const synth = (window as any).speechSynthesis as SpeechSynthesis | undefined;
@@ -257,7 +257,7 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, onPrevious, onNext, currentIndex, totalWords, isRevealed]);
+  }, [onClose, onPrevious, onNext, currentIndex, totalWords, isRevealed, showImageModal]);
 
   const handleRate = (rating: DifficultyLevel) => {
     setClickedRating(rating);
@@ -345,11 +345,7 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
     });
   };
   
-  const handleSendFollowup = () => {
-    if (!followupText.trim() || aiLoading) return;
-    // No chat mode anymore
-    return;
-  };
+  // Removed unused handleSendFollowup function
 
   const formatInlineText = useCallback((text: string, isAssistant: boolean = false) => {
     const escaped = text
@@ -943,8 +939,8 @@ const EvaluationModal: React.FC<EvaluationModalProps> = ({
                             .replace(/```examples[\s\S]*?```/g, '')
                             .replace(/```tips[\s\S]*?```/g, '')
                             .trim();
-                          const exItems = exBlock ? exBlock[0].replace(/```examples|```/g, '').split('\n').map(s => s.trim()).filter(s => s.startsWith('-')).map(s => s.replace(/^\-\s*/, '')) : [];
-                          const tipItems = tipsBlock ? tipsBlock[0].replace(/```tips|```/g, '').split('\n').map(s => s.trim()).filter(s => s.startsWith('-')).map(s => s.replace(/^\-\s*/, '')) : [];
+                          const exItems = exBlock ? exBlock[0].replace(/```examples|```/g, '').split('\n').map(s => s.trim()).filter(s => s.startsWith('-')).map(s => s.replace(/^-\s*/, '')) : [];
+                          const tipItems = tipsBlock ? tipsBlock[0].replace(/```tips|```/g, '').split('\n').map(s => s.trim()).filter(s => s.startsWith('-')).map(s => s.replace(/^-\s*/, '')) : [];
 
                           return (
                             <div key={m.id} className="flex justify-start">

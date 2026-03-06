@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { generateWordTranslations } from '../utils/wordTranslation';
 import { TranslationResult } from '../types';
 import { getLanguageByName } from '../utils/languages';
@@ -95,33 +95,8 @@ const WordSelectionContainer: React.FC<WordSelectionContainerProps> = ({
     }
   };
 
-  // Load translation when word changes (container opens after 1 second delay from textSelectionManager)
-  useEffect(() => {
-    if (selectedWord && isVisible) {
-      // Start loading immediately when container opens
-      setLoading(true);
-      setError(null);
-      setTranslation(null);
-      setSelectedTranslation('');
-      
-      // Load translation immediately since container only opens after 1 second delay
-      console.log('🔄 Loading translation for:', selectedWord);
-      loadTranslation();
-    }
-  }, [selectedWord, isVisible, sourceLanguage, targetLanguage]);
-
-  // Reset state when container closes
-  useEffect(() => {
-    if (!isVisible) {
-      setTranslation(null);
-      setSelectedTranslation('');
-      setError(null);
-      setLoading(false);
-    }
-  }, [isVisible]);
-
   // Load translation with caching
-  const loadTranslation = async () => {
+  const loadTranslation = useCallback(async () => {
     if (!selectedWord.trim()) return;
     
     // Create cache key
@@ -182,7 +157,32 @@ const WordSelectionContainer: React.FC<WordSelectionContainerProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedWord, sourceLanguage, targetLanguage]);
+
+  // Load translation when word changes (container opens after 1 second delay from textSelectionManager)
+  useEffect(() => {
+    if (selectedWord && isVisible) {
+      // Start loading immediately when container opens
+      setLoading(true);
+      setError(null);
+      setTranslation(null);
+      setSelectedTranslation('');
+      
+      // Load translation immediately since container only opens after 1 second delay
+      console.log('🔄 Loading translation for:', selectedWord);
+      loadTranslation();
+    }
+  }, [selectedWord, isVisible, sourceLanguage, targetLanguage, loadTranslation]);
+
+  // Reset state when container closes
+  useEffect(() => {
+    if (!isVisible) {
+      setTranslation(null);
+      setSelectedTranslation('');
+      setError(null);
+      setLoading(false);
+    }
+  }, [isVisible]);
 
   // Handle adding to word list
   const handleAddToWordList = async () => {

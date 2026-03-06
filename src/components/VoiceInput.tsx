@@ -15,10 +15,10 @@ const VoiceInput: React.FC<VoiceInputProps> = ({
 }) => {
   const [isListening, setIsListening] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
   const [audioLevel, setAudioLevel] = useState(0);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [interimText, setInterimText] = useState('');
+  const [, setInterimText] = useState('');
   const recognitionRef = useRef<any>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const silenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -369,8 +369,9 @@ const VoiceInput: React.FC<VoiceInputProps> = ({
       if (recognitionRef.current) {
         recognitionRef.current.stop();
       }
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
+      const timeout = timeoutRef.current;
+      if (timeout) {
+        clearTimeout(timeout);
       }
       if (silenceTimeoutRef.current) {
         clearTimeout(silenceTimeoutRef.current);
@@ -383,7 +384,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({
       }
       stopAudioMonitoring();
     };
-  }, [language, onTextChange]);
+  }, [language, onTextChange, checkForSentenceCompletion, isListening]);
 
   const startListening = async () => {
     if (!isSupported || disabled) return;
